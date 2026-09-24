@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<!-- [CHECKIN-V2] maximum-scale bloqueaba el pinch-zoom (accesibilidad) y las
+     versiones modernas de iOS lo ignoran igualmente. Se retira. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; frame-src https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests">
+<script src="environment.js"></script>
+<script>
+(function enforceTopLevelWindow_(){
+  if (window.top === window.self) return;
+  try { window.top.location.replace(window.self.location.href); }
+  catch (_err) {
+    document.documentElement.style.display = 'none';
+    try { window.stop(); } catch (_stopErr) {}
+  }
+})();
+</script>
+<title>Check-in | Apartamentos Turísticos Benidorm</title>
+<style>
+:root {
+  --mar: #0077B6; --mar-deep: #023E8A; --coral: #E63946;
+  --verde: #2DC653; --sol: #FFB703; --gris-1: #F8FAFC;
+  --gris-2: #EEF2F7; --gris-3: #CBD5E1; --gris-4: #64748B;
+  --gris-5: #1E293B; --r: 12px;
+  --shadow: 0 2px 16px rgba(0,0,0,.08);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--gris-1); color: var(--gris-5); min-height: 100vh; }
+
+header {
+  background: linear-gradient(135deg, var(--mar-deep), var(--mar));
+  color: #fff; padding: 16px 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.logo { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.lang-selector { display: flex; gap: 6px; flex-wrap: wrap; }
+.lang-btn {
+  background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
+  color: #fff; border-radius: 20px; padding: 4px 10px; font-size: .75rem;
+  font-weight: 600; cursor: pointer; transition: background .2s;
+}
+.lang-btn.active { background: rgba(255,255,255,.35); }
+.lang-btn:hover { background: rgba(255,255,255,.25); }
+
+main { max-width: 680px; margin: 0 auto; padding: 20px 16px 40px; }
+
+.card { background: #fff; border-radius: var(--r); box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px; }
+
+/* Reserva info */
+.reserva-info { background: linear-gradient(135deg, #EFF9FF, #E0F2FE); border: 2px solid #90E0EF; border-radius: var(--r); padding: 16px 18px; margin-bottom: 16px; }
+.reserva-info h2 { font-size: 1rem; color: var(--mar-deep); margin-bottom: 10px; }
+.reserva-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: .85rem; }
+.reserva-item label { color: var(--gris-4); font-size: .72rem; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 2px; }
+.reserva-item span { font-weight: 600; color: var(--gris-5); }
+
+/* Hora de llegada */
+.arrival-time-box { background:#F0FFF4; border:2px solid #86EFAC; border-radius:var(--r); padding:16px 18px; margin-bottom:16px; }
+.arrival-time-box h3 { font-size:.92rem; color:#166534; margin-bottom:6px; }
+.arrival-time-box p { font-size:.78rem; color:var(--gris-4); line-height:1.5; margin-bottom:10px; }
+.arrival-time-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.arrival-time-row input { border:2px solid #86EFAC; border-radius:9px; padding:10px 13px; font-size:1.05rem; font-weight:700; color:#166534; background:#fff; outline:none; min-width:135px; }
+.arrival-time-row input:focus { border-color:#16A34A; }
+.arrival-time-required { font-size:.75rem; color:#166534; font-weight:600; }
+
+/* RGPD */
+.rgpd-box { background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; font-size: .8rem; color: #78350F; line-height: 1.6; }
+.rgpd-box h3 { font-size: .85rem; margin-bottom: 8px; color: #92400E; }
+.rgpd-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; cursor: pointer; }
+.rgpd-check input { flex-shrink: 0; width: 18px; height: 18px; margin-top: 2px; cursor: pointer; accent-color: var(--mar); }
+.rgpd-check span { font-size: .8rem; color: var(--gris-5); line-height: 1.5; }
+
+/* Viajeros */
+.viajero-card { background: var(--gris-1); border-radius: 10px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--gris-2); }
+.viajero-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.viajero-num { font-weight: 700; font-size: .9rem; color: var(--mar-deep); display: flex; align-items: center; gap: 6px; }
+.btn-remove { background: #FEE2E2; color: var(--coral); border: none; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: .78rem; font-weight: 600; }
+
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label { font-size: .72rem; font-weight: 700; color: var(--gris-4); text-transform: uppercase; letter-spacing: .04em; }
+.form-group label .req { color: var(--coral); margin-left: 2px; }
+.form-group input, .form-group select {
+  border: 2px solid var(--gris-3); border-radius: 8px; padding: 9px 12px;
+  /* [CHECKIN-V2] 16px es el umbral por debajo del cual iOS Safari hace zoom
+     automatico al enfocar el campo. Con .88rem (13.2px) el formulario daba un
+     salto de zoom en CADA campo, en un formulario de 15 campos por viajero. */
+  font-size: 16px; color: var(--gris-5); background: #fff; outline: none;
+  transition: border-color .2s; width: 100%;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--mar); }
+.form-group input.error { border-color: var(--coral); }
+
+/* Firma */
+.firma-block { margin-top: 16px; }
+.firma-block label { font-size: .72rem; font-weight: 700; color: var(--gris-4); text-transform: uppercase; letter-spacing: .04em; display: block; margin-bottom: 6px; }
+.firma-canvas-wrap { border: 2px solid var(--gris-3); border-radius: 8px; overflow: hidden; background: #fff; position: relative; touch-action: none; }
+.firma-canvas-wrap.firmado { border-color: var(--verde); }
+canvas.firma-canvas { display: block; width: 100%; height: 120px; cursor: crosshair; touch-action: none; }
+.firma-actions { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+.btn-clear-firma { background: var(--gris-2); border: none; border-radius: 6px; padding: 5px 12px; font-size: .78rem; cursor: pointer; color: var(--gris-4); font-weight: 600; }
+.firma-hint { font-size: .72rem; color: var(--gris-4); }
+
+/* Botones */
+.btn-add-viajero {
+  width: 100%; padding: 12px; border: 2px dashed var(--gris-3);
+  background: #fff; border-radius: 10px; color: var(--gris-4);
+  font-size: .88rem; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all .2s; margin-bottom: 16px;
+}
+.btn-add-viajero:hover { border-color: var(--mar); color: var(--mar); }
+
+.btn-submit {
+  width: 100%; padding: 15px; background: var(--mar); color: #fff;
+  border: none; border-radius: 10px; font-size: 1rem; font-weight: 700;
+  cursor: pointer; transition: background .2s; display: flex;
+  align-items: center; justify-content: center; gap: 8px;
+}
+.btn-submit:hover { background: var(--mar-deep); }
+.btn-submit:disabled { background: var(--gris-3); cursor: not-allowed; }
+
+/* Menores */
+.menor-nota { background: #F0FFF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 10px 14px; font-size: .8rem; color: #166534; margin-top: 12px; }
+
+/* Estados */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* Éxito */
+.success-screen { text-align: center; padding: 40px 20px; }
+.success-icon { font-size: 4rem; display: block; margin-bottom: 16px; }
+.success-screen h2 { font-size: 1.4rem; color: var(--verde); margin-bottom: 10px; }
+.success-screen p { color: var(--gris-4); font-size: .9rem; line-height: 1.6; }
+
+/* Error screen */
+.error-screen { text-align: center; padding: 40px 20px; }
+.error-screen h2 { color: var(--coral); margin-bottom: 10px; }
+
+/* Loading */
+.loading { text-align: center; padding: 60px 20px; }
+.spinner { width: 40px; height: 40px; border: 4px solid var(--gris-2); border-top-color: var(--mar); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Progreso */
+.progress-bar { height: 4px; background: var(--gris-2); border-radius: 2px; margin-bottom: 20px; }
+.progress-fill { height: 100%; background: var(--mar); border-radius: 2px; transition: width .3s; }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">&#127944; Apartamentos Turísticos Benidorm</div>
+  <div class="lang-selector">
+    <button class="lang-btn active" onclick="setLang('es')">🇪🇸</button>
+    <button class="lang-btn" onclick="setLang('en')">🇬🇧</button>
+    <button class="lang-btn" onclick="setLang('fr')">🇫🇷</button>
+    <button class="lang-btn" onclick="setLang('de')">🇩🇪</button>
+  </div>
+</header>
+
+<main>
+  <!-- LOADING -->
+  <div class="screen active" id="screen-loading">
+    <div class="loading"><div class="spinner"></div><p id="loading-text">Cargando...</p></div>
+  </div>
+
+  <!-- ERROR -->
+  <div class="screen" id="screen-error">
+    <div class="card error-screen">
+      <h2>&#10060; <span data-t="error_title">Enlace no válido</span></h2>
+      <p data-t="error_desc">Este enlace de check-in no es válido o ha expirado. Contacta con el propietario.</p>
+    </div>
+  </div>
+
+  <!-- FORMULARIO -->
+  <div class="screen" id="screen-form">
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+
+    <div class="reserva-info">
+      <h2 data-t="reserva_title">&#128203; Tu reserva en Airbnb</h2>
+      <div class="reserva-grid">
+        <div class="reserva-item"><label data-t="label_apto">Apartamento</label><span id="info-apto">—</span></div>
+        <div class="reserva-item"><label data-t="label_codigo">Código</label><span id="info-codigo">—</span></div>
+        <div class="reserva-item"><label data-t="label_entrada">Check-in</label><span id="info-entrada">—</span></div>
+        <div class="reserva-item"><label data-t="label_salida">Check-out</label><span id="info-salida">—</span></div>
+        <div class="reserva-item"><label data-t="label_huesped">Titular</label><span id="info-huesped">—</span></div>
+        <div class="reserva-item"><label data-t="label_noches">Noches</label><span id="info-noches">—</span></div>
+      </div>
+    </div>
+
+    <div class="arrival-time-box">
+      <h3 data-t="arrival_title">&#128336; Hora aproximada de llegada</h3>
+      <p data-t="arrival_desc">Indica a qu&eacute; hora calculas llegar. La recibir&aacute; la persona que realiza la entrega de llaves.</p>
+      <div class="arrival-time-row">
+        <input type="time" id="hora-llegada" required onchange="updateProgress()" oninput="updateProgress()">
+        <span class="arrival-time-required" data-t="arrival_required">Campo obligatorio</span>
+      </div>
+    </div>
+
+    <div class="rgpd-box">
+      <h3 data-t="rgpd_title">&#128274; Protección de datos · RD 933/2021</h3>
+      <p data-t="rgpd_text">Los datos que facilitas son necesarios para el cumplimiento del Real Decreto 933/2021 sobre registro de viajeros. Responsable: Vicenta María Beltran SL. Finalidad: registro obligatorio de viajeros y comunicación al Ministerio del Interior (SES.HOSPEDAJES). Conservación: 3 años. El formulario no guarda los datos de identidad en el almacenamiento local del dispositivo. Introduce los datos de tu documento manualmente. Este formulario no solicita fotografías de tu documento para leerlo automáticamente. Tienes derecho de acceso, rectificación y supresión conforme al RGPD.</p>
+      <label class="rgpd-check">
+        <input type="checkbox" id="rgpd-check" onchange="updateProgress()">
+        <span data-t="rgpd_accept">He leído y acepto el tratamiento de mis datos personales conforme a la normativa vigente.</span>
+      </label>
+    </div>
+
+    <div id="viajeros-container"></div>
+
+    <button class="btn-add-viajero" onclick="addViajero()">
+      <span>+</span> <span data-t="btn_add_viajero">Añadir viajero</span>
+    </button>
+
+    <div class="card" style="background:#FFF5F5;border:1px solid #FECACA;margin-bottom:16px">
+      <p style="font-size:.8rem;color:#991B1B" data-t="nota_firma">&#9888;&#65039; Todos los viajeros mayores de 14 años deben firmar este formulario. Los menores de 14 años no firman, pero sus datos deben ser introducidos por un adulto.</p>
+    </div>
+
+    <button class="btn-submit" id="btn-submit" onclick="enviarFormulario()" disabled>
+      <span>&#10003;</span> <span data-t="btn_submit">Enviar registro</span>
+    </button>
+  </div>
+
+  <!-- ÉXITO -->
+  <div class="screen" id="screen-success">
+    <div class="card success-screen">
+      <span class="success-icon">&#9989;</span>
+      <h2 data-t="success_title">¡Registro completado!</h2>
+      <p data-t="success_desc">Tus datos han sido registrados correctamente. Nos vemos en el check-in. ¡Bienvenido/a a Benidorm!</p>
+      <p style="margin-top:16px;font-size:.82rem;color:var(--gris-4)" data-t="success_note">Puedes cerrar esta ventana.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+const APP_VERSION = '1.6.0-P0.14-STABLE';
+const APP_WIRE_VERSION = '1.6.0-p0.14-stable';
+const BRIDGE_PROTOCOL = 'BND_RPC_V2';
+window.BND_VERSION = APP_VERSION;
+const APPS_SCRIPT_URL=String(window.BND_ENV?.appsScriptUrl||'');
+// Mantén la URL /exec de la implementación existente; solo cámbiala si creas otro despliegue.
+// Registro manual: no se solicita imagen del documento.
+
+const APTOS_DATA = {
+  'gran':    { alias: 'Tomas Ortu\u00F1o', nombre: 'Gran Apartamento en el Centro de Benidorm' },
+  'moderno': { alias: 'Buen Retiro',       nombre: 'Moderno Apartamento en el Coraz\u00F3n de Benidorm' },
+};
+
+// ═══════════════════════════════════════════
+// TRADUCCIONES
+// ═══════════════════════════════════════════
+const T = {
+  es: {
+    loading: 'Cargando reserva...',
+    error_title: 'Enlace no v\u00E1lido',
+    error_desc: 'Este enlace de check-in no es v\u00E1lido o ha expirado. Contacta con el propietario.',
+    reserva_title: '&#128203; Tu reserva en Airbnb',
+    label_apto: 'Apartamento', label_codigo: 'C\u00F3digo', label_entrada: 'Check-in',
+    label_salida: 'Check-out', label_huesped: 'Titular', label_noches: 'Noches',
+    arrival_title: '&#128336; Hora aproximada de llegada',
+    arrival_desc: 'Indica a qu\u00E9 hora calculas llegar. La recibir\u00E1 la persona que realiza la entrega de llaves.',
+    arrival_required: 'Campo obligatorio',
+    rgpd_title: '&#128274; Protecci\u00F3n de datos \u00B7 RD 933/2021',
+    rgpd_text: 'Los datos que facilitas son necesarios para el cumplimiento del Real Decreto 933/2021 sobre registro de viajeros. Responsable: Vicenta María Beltran SL. Finalidad: registro obligatorio de viajeros y comunicaci\u00F3n al Ministerio del Interior (SES.HOSPEDAJES). Conservaci\u00F3n: 3 a\u00F1os. El formulario no guarda tus datos de identidad en el almacenamiento local del dispositivo. Introduce los datos de tu documento manualmente. Este formulario no solicita fotografías de tu documento para leerlo automáticamente. Tienes derecho de acceso, rectificaci\u00F3n y supresi\u00F3n conforme al RGPD.',
+    rgpd_accept: 'He le\u00EDdo y acepto el tratamiento de mis datos personales conforme a la normativa vigente.',
+    btn_add_viajero: 'A\u00F1adir viajero',
+    nota_firma: '&#9888;&#65039; Todos los viajeros mayores de 14 a\u00F1os deben firmar este formulario. Los menores de 14 a\u00F1os no firman, pero sus datos deben ser introducidos por un adulto.',
+    btn_submit: 'Enviar registro',
+    success_title: '\u00A1Registro completado!',
+    success_desc: 'Tus datos han sido registrados correctamente. Nos vemos en el check-in. \u00A1Bienvenido/a a Benidorm!',
+    success_note: 'Puedes cerrar esta ventana.',
+    viajero: 'Viajero', menor: 'Menor (< 14 a\u00F1os)',
+    f_nombre: 'Nombre', f_apellidos: 'Apellidos', f_tipo_doc: 'Tipo documento',
+    f_num_doc: 'N\u00BA documento', f_soporte: 'N\u00BA soporte (DNI)',
+    f_nacimiento: 'Fecha nacimiento', f_expedicion: 'Fecha expedici\u00F3n',
+    f_sexo: 'Sexo', f_nacionalidad: 'Nacionalidad', f_direccion: 'Direcci\u00F3n completa',
+    f_pais: 'Pa\u00EDs residencia', f_telefono: 'Tel\u00E9fono', f_email: 'Email',
+    f_parentesco: 'Parentesco',
+    dni: 'DNI', pasaporte: 'Pasaporte', nie: 'NIE', otro: 'Otro',
+    masculino: 'Masculino', femenino: 'Femenino', otro_s: 'Otro',
+    titular: 'Titular', conyuge: 'C\u00F3nyuge / pareja', hijo: 'Hijo/a',
+    familiar: 'Familiar', amigo: 'Amigo/a', otro_p: 'Otro',
+    firma_label: 'Firma (dibujar con el dedo)',
+    firma_hint: 'Firma en el recuadro',
+    btn_clear: 'Borrar firma',
+    menor_nota: 'Viajero menor de 14 a\u00F1os \u2014 no es necesaria la firma. Los datos son proporcionados por el acompa\u00F1ante adulto.',
+    btn_eliminar: 'Eliminar',
+    enviando: 'Enviando...',
+    error_rgpd: 'Debes aceptar la pol\u00EDtica de protecci\u00F3n de datos.',
+    error_arrival: 'Indica la hora aproximada de llegada.',
+    error_campos: 'Revisa los campos obligatorios (marcados en rojo).',
+    error_firma: 'El viajero {n} debe firmar el formulario.',
+    error_envio: 'Error al enviar. Int\u00E9ntalo de nuevo.',
+  },
+  en: {
+    loading: 'Loading reservation...',
+    error_title: 'Invalid link',
+    error_desc: 'This check-in link is invalid or has expired. Please contact the property owner.',
+    reserva_title: '&#128203; Your Airbnb reservation',
+    label_apto: 'Apartment', label_codigo: 'Code', label_entrada: 'Check-in',
+    label_salida: 'Check-out', label_huesped: 'Guest', label_noches: 'Nights',
+    arrival_title: '&#128336; Approximate arrival time',
+    arrival_desc: 'Tell us approximately what time you expect to arrive. The person handing over the keys will receive it.',
+    arrival_required: 'Required field',
+    rgpd_title: '&#128274; Data Protection \u00B7 RD 933/2021',
+    rgpd_text: 'The data you provide is required for compliance with Spanish Royal Decree 933/2021 on traveller registration. Data controller: Vicenta María Beltran SL. Purpose: mandatory traveller registration and communication to the Spanish Ministry of Interior (SES.HOSPEDAJES). Retention: 3 years. The form does not store identity data in local storage on the device. Enter your document details manually. This form does not request document photographs for automatic reading. You have the right of access, rectification and erasure under GDPR.',
+    rgpd_accept: 'I have read and accept the processing of my personal data in accordance with current regulations.',
+    btn_add_viajero: 'Add traveller',
+    nota_firma: '&#9888;&#65039; All travellers aged 14 and over must sign this form. Children under 14 do not sign, but their data must be entered by an accompanying adult.',
+    btn_submit: 'Submit registration',
+    success_title: 'Registration complete!',
+    success_desc: 'Your data has been registered successfully. See you at check-in. Welcome to Benidorm!',
+    success_note: 'You can close this window.',
+    viajero: 'Traveller', menor: 'Minor (< 14 years)',
+    f_nombre: 'First name', f_apellidos: 'Last name', f_tipo_doc: 'Document type',
+    f_num_doc: 'Document number', f_soporte: 'Support number (Spanish ID)',
+    f_nacimiento: 'Date of birth', f_expedicion: 'Issue date',
+    f_sexo: 'Sex', f_nacionalidad: 'Nationality', f_direccion: 'Full address',
+    f_pais: 'Country of residence', f_telefono: 'Phone', f_email: 'Email',
+    f_parentesco: 'Relationship',
+    dni: 'Spanish ID (DNI)', pasaporte: 'Passport', nie: 'NIE', otro: 'Other',
+    masculino: 'Male', femenino: 'Female', otro_s: 'Other',
+    titular: 'Lead guest', conyuge: 'Partner / spouse', hijo: 'Child',
+    familiar: 'Family member', amigo: 'Friend', otro_p: 'Other',
+    firma_label: 'Signature (draw with finger)',
+    firma_hint: 'Sign in the box',
+    btn_clear: 'Clear signature',
+    menor_nota: 'Traveller under 14 \u2014 signature not required. Data provided by accompanying adult.',
+    btn_eliminar: 'Remove',
+    enviando: 'Sending...',
+    error_rgpd: 'You must accept the data protection policy.',
+    error_arrival: 'Please enter your approximate arrival time.',
+    error_campos: 'Please check the required fields (highlighted in red).',
+    error_firma: 'Traveller {n} must sign the form.',
+    error_envio: 'Error sending. Please try again.',
+  },
+  fr: {
+    loading: 'Chargement de la r\u00E9servation...',
+    error_title: 'Lien invalide',
+    error_desc: 'Ce lien de check-in est invalide ou a expir\u00E9. Contactez le propri\u00E9taire.',
+    reserva_title: '&#128203; Votre r\u00E9servation Airbnb',
+    label_apto: 'Appartement', label_codigo: 'Code', label_entrada: 'Check-in',
+    label_salida: 'Check-out', label_huesped: 'Titulaire', label_noches: 'Nuits',
+    arrival_title: '&#128336; Heure d\'arriv\u00E9e approximative',
+    arrival_desc: 'Indiquez l\'heure approximative de votre arriv\u00E9e. La personne charg\u00E9e de remettre les cl\u00E9s la recevra.',
+    arrival_required: 'Champ obligatoire',
+    rgpd_title: '&#128274; Protection des donn\u00E9es \u00B7 RD 933/2021',
+    rgpd_text: 'Les donn\u00E9es que vous fournissez sont n\u00E9cessaires pour se conformer au D\u00E9cret Royal espagnol 933/2021 sur l\'enregistrement des voyageurs. Responsable: Vicenta María Beltran SL. Finalit\u00E9: enregistrement obligatoire des voyageurs et communication au Minist\u00E8re de l\'Int\u00E9rieur espagnol (SES.HOSPEDAJES). Conservation: 3 ans. Le formulaire ne stocke pas les données d’identité dans le stockage local de l’appareil. Saisissez manuellement les informations de votre document. Ce formulaire ne demande aucune photo de votre document pour une lecture automatique. Vous disposez des droits d\'acc\u00E8s, rectification et effacement conform\u00E9ment au RGPD.',
+    rgpd_accept: 'J\'ai lu et j\'accepte le traitement de mes donn\u00E9es personnelles conform\u00E9ment \u00E0 la r\u00E9glementation en vigueur.',
+    btn_add_viajero: 'Ajouter un voyageur',
+    nota_firma: '&#9888;&#65039; Tous les voyageurs de 14 ans et plus doivent signer ce formulaire. Les enfants de moins de 14 ans ne signent pas, mais leurs donn\u00E9es doivent \u00EAtre saisies par un adulte accompagnateur.',
+    btn_submit: 'Envoyer l\'enregistrement',
+    success_title: 'Enregistrement complet\u00E9\u00A0!',
+    success_desc: 'Vos donn\u00E9es ont \u00E9t\u00E9 enregistr\u00E9es avec succ\u00E8s. \u00C0 bient\u00F4t au check-in. Bienvenue \u00E0 Benidorm\u00A0!',
+    success_note: 'Vous pouvez fermer cette fen\u00EAtre.',
+    viajero: 'Voyageur', menor: 'Mineur (< 14 ans)',
+    f_nombre: 'Pr\u00E9nom', f_apellidos: 'Nom', f_tipo_doc: 'Type de document',
+    f_num_doc: 'N\u00BA de document', f_soporte: 'N\u00BA de support (DNI espagnol)',
+    f_nacimiento: 'Date de naissance', f_expedicion: 'Date de d\u00E9livrance',
+    f_sexo: 'Sexe', f_nacionalidad: 'Nationalit\u00E9', f_direccion: 'Adresse compl\u00E8te',
+    f_pais: 'Pays de r\u00E9sidence', f_telefono: 'T\u00E9l\u00E9phone', f_email: 'Email',
+    f_parentesco: 'Lien de parent\u00E9',
+    dni: 'CNI espagnole (DNI)', pasaporte: 'Passeport', nie: 'NIE', otro: 'Autre',
+    masculino: 'Masculin', femenino: 'F\u00E9minin', otro_s: 'Autre',
+    titular: 'Titulaire', conyuge: 'Conjoint(e)', hijo: 'Enfant',
+    familiar: 'Membre de la famille', amigo: 'Ami(e)', otro_p: 'Autre',
+    firma_label: 'Signature (dessiner avec le doigt)',
+    firma_hint: 'Signez dans le cadre',
+    btn_clear: 'Effacer la signature',
+    menor_nota: 'Voyageur de moins de 14 ans \u2014 signature non requise. Les donn\u00E9es sont fournies par l\'adulte accompagnateur.',
+    btn_eliminar: 'Supprimer',
+    enviando: 'Envoi en cours...',
+    error_rgpd: 'Vous devez accepter la politique de protection des donn\u00E9es.',
+    error_arrival: 'Veuillez indiquer votre heure d\'arriv\u00E9e approximative.',
+    error_campos: 'Veuillez v\u00E9rifier les champs obligatoires (en rouge).',
+    error_firma: 'Le voyageur {n} doit signer le formulaire.',
+    error_envio: 'Erreur d\'envoi. Veuillez r\u00E9essayer.',
+  },
+  de: {
+    loading: 'Buchung wird geladen...',
+    error_title: 'Ung\u00FCltiger Link',
+    error_desc: 'Dieser Check-in-Link ist ung\u00FCltig oder abgelaufen. Bitte kontaktieren Sie den Eigent\u00FCmer.',
+    reserva_title: '&#128203; Ihre Airbnb-Buchung',
+    label_apto: 'Wohnung', label_codigo: 'Code', label_entrada: 'Check-in',
+    label_salida: 'Check-out', label_huesped: 'G\u00E4ste', label_noches: 'N\u00E4chte',
+    arrival_title: '&#128336; Ungef\u00E4hre Ankunftszeit',
+    arrival_desc: 'Geben Sie bitte Ihre ungef\u00E4hre Ankunftszeit an. Die Person, die die Schl\u00FCssel \u00FCbergibt, wird informiert.',
+    arrival_required: 'Pflichtfeld',
+    rgpd_title: '&#128274; Datenschutz \u00B7 RD 933/2021',
+    rgpd_text: 'Die von Ihnen gemachten Angaben sind f\u00FCr die Erf\u00FCllung der spanischen K\u00F6niglichen Verordnung 933/2021 \u00FCber die Registrierung von Reisenden erforderlich. Verantwortlicher: Vicenta María Beltran SL. Zweck: Pflichtregistrierung von Reisenden und \u00DCbermittlung an das spanische Innenministerium (SES.HOSPEDAJES). Aufbewahrung: 3 Jahre. Das Formular speichert keine Identitätsdaten im lokalen Speicher des Geräts. Gib die Daten deines Dokuments manuell ein. Dieses Formular fordert keine Dokumentfotos zum automatischen Auslesen an. Sie haben das Recht auf Zugang, Berichtigung und L\u00F6schung gem\u00E4\u00DF DSGVO.',
+    rgpd_accept: 'Ich habe die Datenschutzerkl\u00E4rung gelesen und stimme der Verarbeitung meiner personenbezogenen Daten gem\u00E4\u00DF den geltenden Vorschriften zu.',
+    btn_add_viajero: 'Reisenden hinzuf\u00FCgen',
+    nota_firma: '&#9888;&#65039; Alle Reisenden ab 14 Jahren m\u00FCssen dieses Formular unterzeichnen. Kinder unter 14 Jahren unterschreiben nicht, aber ihre Daten m\u00FCssen von einem begleitenden Erwachsenen eingetragen werden.',
+    btn_submit: 'Registrierung senden',
+    success_title: 'Registrierung abgeschlossen!',
+    success_desc: 'Ihre Daten wurden erfolgreich registriert. Wir sehen uns beim Check-in. Willkommen in Benidorm!',
+    success_note: 'Sie k\u00F6nnen dieses Fenster schlie\u00DFen.',
+    viajero: 'Reisender', menor: 'Minderj\u00E4hrige/r (< 14 Jahre)',
+    f_nombre: 'Vorname', f_apellidos: 'Nachname', f_tipo_doc: 'Dokumententyp',
+    f_num_doc: 'Dokumentennummer', f_soporte: 'St\u00FCtznummer (span. Ausweis)',
+    f_nacimiento: 'Geburtsdatum', f_expedicion: 'Ausstellungsdatum',
+    f_sexo: 'Geschlecht', f_nacionalidad: 'Nationalit\u00E4t', f_direccion: 'Vollst\u00E4ndige Adresse',
+    f_pais: 'Wohnsitzland', f_telefono: 'Telefon', f_email: 'E-Mail',
+    f_parentesco: 'Verwandtschaft',
+    dni: 'Spanischer Ausweis (DNI)', pasaporte: 'Reisepass', nie: 'NIE', otro: 'Sonstige',
+    masculino: 'm\u00E4nnlich', femenino: 'weiblich', otro_s: 'Sonstige',
+    titular: 'Hauptgast', conyuge: 'Partner/in', hijo: 'Kind',
+    familiar: 'Familienmitglied', amigo: 'Freund/in', otro_p: 'Sonstige',
+    firma_label: 'Unterschrift (mit Finger zeichnen)',
+    firma_hint: 'Im Feld unterschreiben',
+    btn_clear: 'Unterschrift l\u00F6schen',
+    menor_nota: 'Reisender unter 14 Jahren \u2014 keine Unterschrift erforderlich. Daten werden vom begleitenden Erwachsenen angegeben.',
+    btn_eliminar: 'Entfernen',
+    enviando: 'Wird gesendet...',
+    error_rgpd: 'Sie m\u00FCssen die Datenschutzerkl\u00E4rung akzeptieren.',
+    error_arrival: 'Bitte geben Sie Ihre ungef\u00E4hre Ankunftszeit an.',
+    error_campos: 'Bitte \u00FCberpr\u00FCfen Sie die Pflichtfelder (rot markiert).',
+    error_firma: 'Reisender {n} muss das Formular unterzeichnen.',
+    error_envio: 'Sendefehler. Bitte erneut versuchen.',
+  }
+};
+
+// ═══════════════════════════════════════════
+// ESTADO
+// ═══════════════════════════════════════════
+let lang = 'es';
+let reservaData = null;
+let checkinToken = '';
+let publicSessionToken = '';
+let reservationCode = '';
+let viajeroCount = 0;
+let firmas = {};
+let pendingPublicSubmission = null;
+
+// ═══════════════════════════════════════════
+// IDIOMA
+// ═══════════════════════════════════════════
+function t(key) { return T[lang][key] || T['es'][key] || key; }
+
+function setLang(l) {
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent === l.toUpperCase()));
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const key = el.getAttribute('data-t');
+    el.innerHTML = t(key);
+  });
+  document.getElementById('loading-text').textContent = t('loading');
+  // Actualizar viajeros existentes
+  refreshViajeroLabels();
+}
+
+function refreshViajeroLabels() {
+  // Re-renderizar viajeros con nuevo idioma si los hay
+  const container = document.getElementById('viajeros-container');
+  if (!container.children.length) return;
+  const count = viajeroCount;
+  const menores = [];
+  for (let i = 1; i <= count; i++) {
+    const el = document.getElementById('viajero-' + i);
+    if (el) menores.push({ id: i, menor: el.dataset.menor === 'true' });
+  }
+  // Solo actualizar textos de labels
+  for (let i = 1; i <= count; i++) {
+    const el = document.getElementById('viajero-' + i);
+    if (!el) continue;
+    el.querySelectorAll('[data-tv]').forEach(lbl => {
+      lbl.textContent = t(lbl.getAttribute('data-tv'));
+    });
+  }
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+let secureBridgeFrame_ = null;
+let secureBridgeWindow_ = null;
+let secureBridgeOrigin_ = '';
+let secureBridgeChannel_ = '';
+let secureBridgeReadyPromise_ = null;
+let secureBridgeReadyResolve_ = null;
+let secureBridgeReadyReject_ = null;
+let secureBridgeReadyTimer_ = null;
+const secureBridgePending_ = new Map();
+
+function secureRandomId_(bytes) {
+  const size = Math.max(12, Number(bytes || 18));
+  try {
+    const values = new Uint8Array(size);
+    crypto.getRandomValues(values);
+    return Array.from(values, function(value){ return value.toString(16).padStart(2, '0'); }).join('');
+  } catch (_err) {
+    return String(Date.now()) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  }
+}
+
+function appClientError_(code, message) {
+  const err = new Error(String(message || 'Error de compatibilidad'));
+  err.code = String(code || 'CLIENT_ERROR');
+  return err;
+}
+
+function isSecureBridgeOrigin_(origin) {
+  const value = String(origin || '');
+  return value === 'https://script.google.com' || value === 'https://script.googleusercontent.com' || /^https:\/\/[A-Za-z0-9-]+-script\.googleusercontent\.com$/.test(value);
+}
+
+function resetSecureBridge_(reason) {
+  if (secureBridgeReadyTimer_) clearTimeout(secureBridgeReadyTimer_);
+  secureBridgeReadyTimer_ = null;
+  secureBridgePending_.forEach(function(pending){
+    clearTimeout(pending.timer);
+    pending.reject(new Error(reason || 'El canal seguro se ha reiniciado'));
+  });
+  secureBridgePending_.clear();
+  if (secureBridgeFrame_ && secureBridgeFrame_.parentNode) secureBridgeFrame_.parentNode.removeChild(secureBridgeFrame_);
+  secureBridgeFrame_ = null;
+  secureBridgeWindow_ = null;
+  secureBridgeOrigin_ = '';
+  secureBridgeChannel_ = '';
+  secureBridgeReadyPromise_ = null;
+  secureBridgeReadyResolve_ = null;
+  secureBridgeReadyReject_ = null;
+}
+
+window.addEventListener('message', function(event) {
+  const message = event && event.data || {};
+  if (!isSecureBridgeOrigin_(event.origin)) return;
+
+  if (message.type === 'BND_BRIDGE_READY') {
+    if (!secureBridgeChannel_ || message.channel !== secureBridgeChannel_) return;
+    if (message.version !== APP_WIRE_VERSION || message.protocol !== BRIDGE_PROTOCOL) {
+      const error = appClientError_('BACKEND_VERSION_MISMATCH', 'GitHub Pages y Apps Script no tienen la misma versión. Publica conjuntamente Code.gs y checkin.html P0.14 en la implementación existente.');
+      const reject = secureBridgeReadyReject_;
+      if (secureBridgeReadyTimer_) clearTimeout(secureBridgeReadyTimer_);
+      secureBridgeReadyTimer_ = null;
+      secureBridgeReadyReject_ = null;
+      secureBridgeReadyResolve_ = null;
+      if (reject) reject(error);
+      resetSecureBridge_(error.message);
+      return;
+    }
+    secureBridgeWindow_ = event.source;
+    secureBridgeOrigin_ = event.origin;
+    if (secureBridgeReadyTimer_) clearTimeout(secureBridgeReadyTimer_);
+    secureBridgeReadyTimer_ = null;
+    if (secureBridgeReadyResolve_) secureBridgeReadyResolve_(true);
+    secureBridgeReadyResolve_ = null;
+    secureBridgeReadyReject_ = null;
+    return;
+  }
+
+  if (message.type !== 'BND_API_RESPONSE' || message.channel !== secureBridgeChannel_) return;
+  if (message.protocol && message.protocol !== BRIDGE_PROTOCOL) return;
+  if (event.source !== secureBridgeWindow_ || event.origin !== secureBridgeOrigin_) return;
+  const requestId = String(message.requestId || '');
+  const pending = secureBridgePending_.get(requestId);
+  if (!pending) return;
+  secureBridgePending_.delete(requestId);
+  clearTimeout(pending.timer);
+  pending.resolve(message.payload);
+});
+
+function ensureApiBridge_() {
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(APPS_SCRIPT_URL))return Promise.reject(new Error('Falta configurar environment.js para este entorno'));
+  if (secureBridgeWindow_ && secureBridgeOrigin_) return Promise.resolve(true);
+  if (secureBridgeReadyPromise_) return secureBridgeReadyPromise_;
+
+  secureBridgeChannel_ = secureRandomId_(24);
+  secureBridgeReadyPromise_ = new Promise(function(resolve, reject){
+    secureBridgeReadyResolve_ = resolve;
+    secureBridgeReadyReject_ = reject;
+    secureBridgeReadyTimer_ = setTimeout(function(){
+      const pendingReject = secureBridgeReadyReject_;
+      secureBridgeReadyReject_ = null;
+      if (pendingReject) pendingReject(appClientError_('BRIDGE_TIMEOUT', 'No se pudo iniciar el canal seguro con Apps Script'));
+      resetSecureBridge_('Tiempo de espera agotado al iniciar el canal seguro');
+    }, 20000);
+  });
+
+  secureBridgeFrame_ = document.createElement('iframe');
+  secureBridgeFrame_.id = 'bnd-secure-bridge';
+  secureBridgeFrame_.title = 'Canal seguro de Apartamentos Benidorm';
+  secureBridgeFrame_.setAttribute('aria-hidden', 'true');
+  secureBridgeFrame_.tabIndex = -1;
+  secureBridgeFrame_.style.cssText = 'position:fixed;width:1px;height:1px;left:-10000px;top:-10000px;border:0;opacity:0;pointer-events:none';
+  secureBridgeFrame_.src = APPS_SCRIPT_URL + '?page=bridge&channel=' + encodeURIComponent(secureBridgeChannel_) + '&v=' + encodeURIComponent(APP_WIRE_VERSION);
+  document.body.appendChild(secureBridgeFrame_);
+  return secureBridgeReadyPromise_;
+}
+
+async function apiPostPublic_(payload, timeoutMs) {
+  await ensureApiBridge_();
+  const requestId = secureRandomId_(18);
+  return new Promise(function(resolve, reject){
+    const timer = setTimeout(function(){
+      secureBridgePending_.delete(requestId);
+      reject(appClientError_('RPC_TIMEOUT', 'Tiempo de espera agotado'));
+      if(!secureBridgePending_.size)setTimeout(function(){resetSecureBridge_('Canal seguro sin respuesta');},0);
+    }, timeoutMs || 20000);
+    secureBridgePending_.set(requestId, {resolve:resolve, reject:reject, timer:timer});
+    try {
+      secureBridgeWindow_.postMessage({
+        type:'BND_API_REQUEST',
+        protocol:BRIDGE_PROTOCOL,
+        channel:secureBridgeChannel_,
+        requestId:requestId,
+        payload:payload || {}
+      }, secureBridgeOrigin_);
+    } catch (err) {
+      secureBridgePending_.delete(requestId);
+      clearTimeout(timer);
+      reject(err);
+    }
+  });
+}
+
+
+function publicSessionStorageKey_(codigo){return 'bnd_public_session_'+String(codigo||'').toUpperCase();}
+
+async function iniciarSesionPublica_(codigo, token) {
+  reservationCode=String(codigo||'').toUpperCase();
+  if(!reservationCode)throw new Error('Falta el código de reserva');
+  if(token){
+    try{history.replaceState(null,'',window.location.pathname+'?r='+encodeURIComponent(reservationCode));}catch(_err){}
+    const exchanged=await apiPostPublic_({action:'exchangeCheckinToken',reservaId:reservationCode,checkinToken:token},25000);
+    if(!exchanged||!exchanged.ok){const err=new Error(exchanged&&exchanged.error||'Enlace no válido');err.code=exchanged&&exchanged.code;throw err;}
+    publicSessionToken=exchanged.publicSessionToken;
+    try{sessionStorage.setItem(publicSessionStorageKey_(reservationCode),publicSessionToken);}catch(_err){}
+    checkinToken='';
+    const cleanUrl=window.location.pathname+'?r='+encodeURIComponent(reservationCode);
+    try{history.replaceState(null,'',cleanUrl);}catch(_err){}
+    return exchanged.reserva;
+  }
+  try{publicSessionToken=sessionStorage.getItem(publicSessionStorageKey_(reservationCode))||'';}catch(_err){}
+  if(!publicSessionToken)throw new Error('La sesión del formulario ha caducado');
+  const response=await apiPostPublic_({action:'getReserva',reservaId:reservationCode,publicSessionToken:publicSessionToken},20000);
+  if(!response||!response.ok)throw new Error(response&&response.error||'La sesión del formulario ha caducado');
+  return response.reserva;
+}
+
+window.addEventListener('load', async function() {
+  const nav=navigator.language||'es';
+  const detected=nav.startsWith('fr')?'fr':nav.startsWith('de')?'de':nav.startsWith('en')?'en':'es';
+  setLang(detected);
+  const params=new URLSearchParams(window.location.search);
+  const codigo=params.get('r');
+  checkinToken=params.get('t')||params.get('token')||'';
+  if(!codigo){showError();return;}
+  try{
+    const reserva=await iniciarSesionPublica_(codigo,checkinToken);
+    cargarReserva(codigo,reserva);
+  }catch(_err){showError();}
+});
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showError() { showScreen('screen-error'); }
+
+// ═══════════════════════════════════════════
+// CARGAR RESERVA
+// ═══════════════════════════════════════════
+function cargarReserva(codigo,reservaInicial) {
+  Promise.resolve(reservaInicial||apiPostPublic_({action:'getReserva',reservaId:codigo,publicSessionToken:publicSessionToken},20000).then(function(r){if(!r||!r.ok)throw new Error(r&&r.error||'Reserva no disponible');return r.reserva;}))
+    .then(function(reserva){
+      reservaData=reserva;mostrarReserva(reservaData);showScreen('screen-form');
+      if(!document.querySelector('.viajero-card'))addViajero();
+    }).catch(function(){showError();});
+}
+
+function mostrarReserva(r) {
+  document.getElementById('info-apto').textContent    = r.apto    || '—';
+  document.getElementById('info-codigo').textContent  = r.codigo  || '—';
+  document.getElementById('info-entrada').textContent = r.entrada || '—';
+  document.getElementById('info-salida').textContent  = r.salida  || '—';
+  document.getElementById('info-huesped').textContent = r.huesped || '—';
+  document.getElementById('info-noches').textContent  = r.noches  || '—';
+}
+
+// ═══════════════════════════════════════════
+// VIAJEROS
+// ═══════════════════════════════════════════
+function addViajero(esMenor) {
+  if(document.querySelectorAll('.viajero-card').length>=20){alert('El máximo permitido es de 20 viajeros.');return;}
+  viajeroCount++;
+  const n=viajeroCount;
+  const menor=!!esMenor;
+  const div=document.createElement('div');div.className='viajero-card';div.id='viajero-'+n;div.dataset.menor=menor;
+  const tituloKey=menor?'menor':'viajero';
+  div.innerHTML=`
+    <div class="viajero-header"><div class="viajero-num">&#128100; ${t(tituloKey)} ${n}</div>${n>1?`<button class="btn-remove" onclick="removeViajero(${n})">${t('btn_eliminar')}</button>`:''}</div>
+    <div class="form-grid">
+      <div class="form-group"><label><span data-tv="f_nombre">${t('f_nombre')}</span><span class="req">*</span></label><input type="text" maxlength="80" id="v${n}-nombre" placeholder="Ana"></div>
+      <div class="form-group"><label><span data-tv="f_apellidos">${t('f_apellidos')}</span><span class="req">*</span></label><input type="text" maxlength="120" id="v${n}-apellidos" placeholder="García López"></div>
+      <div class="form-group"><label><span data-tv="f_tipo_doc">${t('f_tipo_doc')}</span><span class="req">*</span></label><select id="v${n}-tipo-doc" onchange="updateSoporte(${n})"><option value="DNI">${t('dni')}</option><option value="Pasaporte">${t('pasaporte')}</option><option value="NIE">${t('nie')}</option><option value="Otro">${t('otro')}</option></select></div>
+      <div class="form-group"><label><span data-tv="f_num_doc">${t('f_num_doc')}</span><span class="req">*</span></label><input type="text" maxlength="40" id="v${n}-num-doc" placeholder="12345678A"></div>
+      <div class="form-group" id="v${n}-soporte-group"><label><span data-tv="f_soporte">${t('f_soporte')}</span></label><input type="text" maxlength="40" id="v${n}-soporte" placeholder="AAA123456"></div>
+      <div class="form-group"><label><span data-tv="f_nacimiento">${t('f_nacimiento')}</span><span class="req">*</span></label><input type="date" id="v${n}-nacimiento" onchange="checkMenor(${n})"></div>
+      ${!menor?`<div class="form-group"><label><span data-tv="f_expedicion">${t('f_expedicion')}</span><span class="req">*</span></label><input type="date" id="v${n}-expedicion"></div>`:''}
+      <div class="form-group"><label><span data-tv="f_sexo">${t('f_sexo')}</span><span class="req">*</span></label><select id="v${n}-sexo"><option value="">—</option><option value="M">${t('masculino')}</option><option value="F">${t('femenino')}</option><option value="O">${t('otro_s')}</option></select></div>
+      <div class="form-group"><label><span data-tv="f_nacionalidad">${t('f_nacionalidad')}</span><span class="req">*</span></label><input type="text" maxlength="80" id="v${n}-nacionalidad" placeholder="Española"></div>
+      <div class="form-group full"><label><span data-tv="f_direccion">${t('f_direccion')}</span><span class="req">*</span></label><input type="text" maxlength="200" id="v${n}-direccion" placeholder="Calle Mayor 1, 28001 Madrid"></div>
+      <div class="form-group"><label><span data-tv="f_pais">${t('f_pais')}</span><span class="req">*</span></label><input type="text" maxlength="80" id="v${n}-pais" placeholder="España"></div>
+      ${!menor?`<div class="form-group"><label><span data-tv="f_telefono">${t('f_telefono')}</span><span class="req">*</span></label><input type="tel" maxlength="40" id="v${n}-telefono" placeholder="+34 600 000 000"></div>`:''}
+      ${!menor?`<div class="form-group"><label><span data-tv="f_email">${t('f_email')}</span><span class="req">*</span></label><input type="email" maxlength="120" id="v${n}-email" placeholder="ana@email.com"></div>`:''}
+      <div class="form-group"><label><span data-tv="f_parentesco">${t('f_parentesco')}</span><span class="req">*</span></label><select id="v${n}-parentesco"><option value="Titular">${t('titular')}</option><option value="Cónyuge">${t('conyuge')}</option><option value="Hijo/a">${t('hijo')}</option><option value="Familiar">${t('familiar')}</option><option value="Amigo/a">${t('amigo')}</option><option value="Otro">${t('otro_p')}</option></select></div>
+    </div>
+    ${!menor?`<div class="firma-block"><label><span data-tv="firma_label">${t('firma_label')}</span><span class="req">*</span></label><div class="firma-canvas-wrap" id="firma-wrap-${n}"><canvas class="firma-canvas" id="firma-canvas-${n}"></canvas></div><div class="firma-actions"><button class="btn-clear-firma" onclick="clearFirma(${n})">${t('btn_clear')}</button><span class="firma-hint" data-tv="firma_hint">${t('firma_hint')}</span></div></div>`:`<div class="menor-nota" data-tv="menor_nota">${t('menor_nota')}</div>`}
+  `;
+  document.getElementById('viajeros-container').appendChild(div);
+  div.querySelectorAll('input').forEach(function(input){
+    input.setAttribute('autocomplete','off');
+    input.setAttribute('autocorrect','off');
+    input.setAttribute('spellcheck','false');
+  });
+  if(!menor)initFirma(n);
+  updateProgress();renumerarEtiquetasViajeros();
+}
+
+function removeViajero(n) {
+  document.getElementById('viajero-' + n)?.remove();
+  delete firmas[n];
+  // [CHECKIN-V2] Los IDs internos siguen teniendo huecos (renumerarlos obligaria
+  // a recrear los canvas de firma y se perderian las firmas ya hechas), pero la
+  // numeracion VISIBLE se recalcula para que el huesped no vea "Viajero 1,
+  // Viajero 3". El envio ya no depende de los IDs consecutivos.
+  renumerarEtiquetasViajeros();
+  updateProgress();
+}
+
+function renumerarEtiquetasViajeros() {
+  const tarjetas = document.querySelectorAll('.viajero-card');
+  for (let i = 0; i < tarjetas.length; i++) {
+    const etiqueta = tarjetas[i].querySelector('.viajero-num');
+    if (!etiqueta) continue;
+    const esMenor = tarjetas[i].dataset.menor === 'true';
+    etiqueta.innerHTML = '&#128100; ' + t(esMenor ? 'menor' : 'viajero') + ' ' + (i + 1);
+  }
+}
+
+function updateSoporte(n) {
+  const tipo = document.getElementById(`v${n}-tipo-doc`)?.value;
+  const sg = document.getElementById(`v${n}-soporte-group`);
+  if (sg) sg.style.display = tipo === 'DNI' ? '' : 'none';
+}
+
+function checkMenor(n) {
+  const val = document.getElementById(`v${n}-nacimiento`)?.value;
+  if (!val) return;
+  const age = Math.floor((new Date() - new Date(val)) / (365.25 * 86400000));
+  // Si detectamos que es menor de 14 al introducir fecha de nacimiento, avisar
+  if (age < 14) {
+    document.getElementById('viajero-' + n).style.borderColor = '#FCD34D';
+  }
+}
+
+// ═══════════════════════════════════════════
+// FIRMA DIGITAL
+// ═══════════════════════════════════════════
+function initFirma(n) {
+  const canvas = document.getElementById('firma-canvas-' + n);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  firmas[n] = { canvas, ctx, signed: false };
+
+  // Ajustar resolución
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width  = rect.width  * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    ctx.strokeStyle = '#1E293B';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }
+  resize();
+
+  let drawing = false, lastX = 0, lastY = 0;
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  }
+
+  function start(e) { e.preventDefault(); drawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; }
+  function move(e) {
+    e.preventDefault();
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+    lastX = p.x; lastY = p.y;
+    firmas[n].signed = true;
+    document.getElementById('firma-wrap-' + n)?.classList.add('firmado');
+    updateProgress();
+  }
+  function stop() { drawing = false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  canvas.addEventListener('mouseup', stop);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', stop);
+}
+
+function firmaComprimida(n) {
+  const f = firmas[n];
+  if (!f || !f.canvas) return '';
+  const out = document.createElement('canvas');
+  out.width = 600;
+  out.height = 120;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.drawImage(f.canvas, 0, 0, out.width, out.height);
+  // JPEG reducido para no superar el límite de texto de una celda de Sheets.
+  return out.toDataURL('image/jpeg', 0.55);
+}
+
+function clearFirma(n) {
+  const f = firmas[n];
+  if (!f) return;
+  const rect = f.canvas.getBoundingClientRect();
+  f.ctx.clearRect(0, 0, rect.width * window.devicePixelRatio, rect.height * window.devicePixelRatio);
+  f.signed = false;
+  document.getElementById('firma-wrap-' + n)?.classList.remove('firmado');
+  updateProgress();
+}
+
+// ═══════════════════════════════════════════
+// PROGRESO
+// ═══════════════════════════════════════════
+function updateProgress() {
+  const rgpd = document.getElementById('rgpd-check')?.checked;
+  const horaLlegada = document.getElementById('hora-llegada')?.value || '';
+  const totalViajeros = document.querySelectorAll('.viajero-card').length;
+  let pct = 0;
+  if (horaLlegada) pct += 20;
+  if (rgpd) pct += 20;
+  if (totalViajeros > 0) pct += 20;
+  let firmados = 0, total = 0;
+  for (const k in firmas) { total++; if (firmas[k].signed) firmados++; }
+  if (total > 0) pct += Math.round(40 * firmados / total);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('btn-submit').disabled = !rgpd || !horaLlegada || totalViajeros === 0;
+}
+
+// ═══════════════════════════════════════════
+// ENVIAR
+// ═══════════════════════════════════════════
+function jsonpRequest() { return Promise.reject(new Error('JSONP desactivado por seguridad en V1.6')); }
+
+async function verificarRegistro(reservaId,submissionId) {
+  return apiPostPublic_({action:'getCheckinStatus',reservaId:reservaId,submissionId:submissionId,publicSessionToken:publicSessionToken},18000);
+}
+
+// ═══════════════════════════════════════════
+// SECURITY-V1.6: los datos de identidad permanecen únicamente en memoria.
+// No existen borradores, listeners de autoguardado ni persistencia local.
+// ═══════════════════════════════════════════
+
+function crearSubmissionIdPublic_() {
+  if(window.crypto&&crypto.randomUUID)return crypto.randomUUID().replace(/-/g,'');
+  const bytes=new Uint8Array(24);if(window.crypto&&crypto.getRandomValues)crypto.getRandomValues(bytes);else for(let i=0;i<bytes.length;i++)bytes[i]=Math.floor(Math.random()*256);
+  return Array.from(bytes).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+
+async function enviarFormulario() {
+  if(!document.getElementById('rgpd-check').checked){alert(t('error_rgpd'));return;}
+  const horaLlegada=document.getElementById('hora-llegada')?.value||'';
+  if(!horaLlegada){alert(t('error_arrival'));document.getElementById('hora-llegada')?.focus();return;}
+  const tarjetas=Array.from(document.querySelectorAll('.viajero-card'));
+  if(!tarjetas.length||tarjetas.length>20){alert('El número de viajeros debe estar entre 1 y 20.');return;}
+  const viajeros=[];let hayError=false,primerError=null;
+  for(let idx=0;idx<tarjetas.length;idx++){
+    const el=tarjetas[idx],n=Number(String(el.id||'').split('-')[1]);if(!n)continue;
+    const g=function(id){return(document.getElementById('v'+n+'-'+id)?.value||'').trim();};
+    const nacimiento=g('nacimiento');
+    let menorLegal=el.dataset.menor==='true';
+    if(nacimiento){
+      const birth=new Date(nacimiento+'T12:00:00');
+      if(!Number.isNaN(birth.getTime())){
+        const today=new Date();
+        let age=today.getFullYear()-birth.getFullYear();
+        const monthDelta=today.getMonth()-birth.getMonth();
+        if(monthDelta<0||(monthDelta===0&&today.getDate()<birth.getDate()))age--;
+        menorLegal=age>=0&&age<14;
+      }
+    }
+    const campos=['nombre','apellidos','num-doc','nacimiento','sexo','nacionalidad','direccion','pais'];if(!menorLegal)campos.push('expedicion','telefono','email');
+    campos.forEach(function(c){const input=document.getElementById('v'+n+'-'+c);if(input&&!input.value.trim()){input.classList.add('error');hayError=true;if(!primerError)primerError=input;}else if(input)input.classList.remove('error');});
+    if(!menorLegal&&(!firmas[n]||!firmas[n].signed)){alert(t('error_firma').replace('{n}',idx+1));return;}
+    viajeros.push({numero:idx+1,menor:menorLegal,nombre:g('nombre'),apellidos:g('apellidos'),tipoDoc:g('tipo-doc'),numDoc:g('num-doc'),soporte:g('soporte'),nacimiento:nacimiento,expedicion:menorLegal?'':g('expedicion'),sexo:g('sexo'),nacionalidad:g('nacionalidad'),direccion:g('direccion'),pais:g('pais'),telefono:menorLegal?'':g('telefono'),email:menorLegal?'':g('email'),parentesco:g('parentesco'),firma:menorLegal?'':firmaComprimida(n)});
+  }
+  if(hayError){if(primerError){try{primerError.scrollIntoView({behavior:'smooth',block:'center'});}catch(_e){}setTimeout(function(){try{primerError.focus({preventScroll:true});}catch(_e){}},350);}alert(t('error_campos'));return;}
+  if(viajeros.length!==tarjetas.length){alert('No se han podido recoger todos los viajeros. No se ha enviado nada.');return;}
+  const btn=document.getElementById('btn-submit'),btnLabel=btn.querySelector('span:last-child');btn.disabled=true;if(btnLabel)btnLabel.textContent=t('enviando');
+  const submissionFingerprint=JSON.stringify({reservaId:reservationCode,horaLlegada:horaLlegada,idioma:lang,viajeros:viajeros});
+  if(!pendingPublicSubmission||pendingPublicSubmission.fingerprint!==submissionFingerprint){
+    pendingPublicSubmission={
+      fingerprint:submissionFingerprint,
+      id:crearSubmissionIdPublic_(),
+      payload:{action:'checkin',reservaId:reservationCode,horaLlegada:horaLlegada,idioma:lang,viajeros:viajeros,submissionId:'',publicSessionToken:publicSessionToken}
+    };
+    pendingPublicSubmission.payload.submissionId=pendingPublicSubmission.id;
+  }
+  const payload=pendingPublicSubmission.payload;
+  try{
+    let direct=null,directError=null;
+    try{direct=await apiPostPublic_(payload,50000);}catch(err){directError=err;}
+    if(!(direct&&direct.ok&&direct.submissionId===payload.submissionId)){
+      let estado=null;const esperas=[1500,3000,6000,9000];
+      for(const wait of esperas){await new Promise(function(resolve){setTimeout(resolve,wait);});estado=await verificarRegistro(payload.reservaId,payload.submissionId);if(estado&&estado.ok&&estado.exists)break;}
+      if(!estado||!estado.ok||!estado.exists)throw directError||new Error(direct&&direct.error||'El registro no aparece en Google Sheets');
+    }
+    try{sessionStorage.removeItem(publicSessionStorageKey_(reservationCode));}catch(_err){}
+    publicSessionToken='';pendingPublicSubmission=null;showScreen('screen-success');
+  }catch(e){btn.disabled=false;if(btnLabel)btnLabel.textContent=t('btn_submit');alert(t('error_envio')+'\n\n'+String(e&&e.message||e));}
+}
+
+</script>
+</body>
+</html>

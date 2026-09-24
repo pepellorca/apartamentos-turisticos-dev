@@ -1,0 +1,2092 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; img-src 'self' data: blob: https:; media-src 'self' https: blob:; style-src 'self' 'unsafe-inline'; frame-src https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests">
+<meta name="theme-color" content="#063b66">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi estancia">
+<title>Mi estancia · Apartamentos Turísticos Benidorm</title>
+<style>
+[hidden]{display:none!important}
+/* ============================================================================
+   MI ESTANCIA · V1.8.0-RC20 · Dirección visual "LUZ"
+   ----------------------------------------------------------------------------
+   En Benidorm lo característico no es la playa de postal: es la luz. Las dos
+   bahías miran en direcciones distintas, así que la mañana y la tarde se leen
+   diferentes. La luz es el eje del hilo temporal: la portada cambia de
+   temperatura según el momento del viaje.
+
+   Elemento firma: EL ESPINAZO. Una línea vertical real que hace de navegación.
+   Lo pasado colapsa en una marca, lo futuro son nodos huecos, y sólo el
+   momento actual está abierto sosteniendo la única acción que toca ahora.
+
+   El terracota de los toldos (--toldo) aparece SOLO en urgencia real.
+   Cubre las 133 clases del render + las nuevas de Llegar y Moverse.
+   ========================================================================== */
+
+/* ------------------------------------------------------------- 1. TOKENS */
+:root{
+  --sal:#F4F6F5;          /* cal salina: fondo, frío y no crema */
+  --cal:#FFFFFF;
+  --tinta:#10242E;        /* tinta de mar */
+  --mar:#0E4C63;          /* azulejo: estructura */
+  --mar-900:#08303F;
+  --levante:#1FA1A8;      /* marea: progreso y confirmado */
+  --sol:#E8A33D;          /* la luz: acento cálido */
+  --toldo:#C7452C;        /* SOLO urgencia */
+  --arena:#EADDC8;        /* superficie bloqueada o en espera */
+  --verde:#1A7F5A;
+  --gris:#5E7480;
+  --linea:#DCE6E6;
+
+  /* Alias que LEE el JS: content.apartment.accent escribe --blue.
+     Todo el sistema de acción cuelga de aquí. */
+  --blue:var(--mar);
+  /* compatibilidad con nombres heredados */
+  --navy:var(--mar);--cyan:var(--levante);--aqua:#6FD3D0;--coral:var(--toldo);
+  --gold:var(--sol);--green:var(--verde);--ink:var(--tinta);--muted:var(--gris);
+  --line:var(--linea);--paper:var(--sal);--card:var(--cal);--danger:var(--toldo);
+
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px;--s10:44px;
+  --r-s:10px;--r-m:14px;--r-l:20px;--r-xl:26px;
+  --shadow:0 16px 40px rgba(8,44,60,.11);
+  --shadow-sm:0 2px 10px rgba(8,44,60,.055);
+
+  --display:ui-rounded,'SF Pro Rounded','Segoe UI Variable Display',system-ui,-apple-system,sans-serif;
+  --body:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+  --data:ui-monospace,'SF Mono','Cascadia Mono','Roboto Mono',Menlo,monospace;
+
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+
+  /* LA LUZ · se desplaza con la fase */
+  --luz-a:#08303F;--luz-b:#0E4C63;--luz-c:#1FA1A8;--sobre-luz:#EAF6F7;
+}
+body[data-phase="arrival"]{--luz-a:#5A3410;--luz-b:#A9691D;--luz-c:#E8A33D;--sobre-luz:#FFF6E6}
+body[data-phase="stay"]{--luz-a:#0B4A5E;--luz-b:#15819D;--luz-c:#59CFC9;--sobre-luz:#EDFBFB}
+body[data-phase="checkout"]{--luz-a:#1B2A46;--luz-b:#41507A;--luz-c:#9184BC;--sobre-luz:#F0EEF8}
+body[data-phase="completed"]{--luz-a:#14342C;--luz-b:#1A7F5A;--luz-c:#5FC79B;--sobre-luz:#EAF8F1}
+
+@media (prefers-color-scheme:dark){
+  :root{
+    --sal:#07171F;--cal:#0D2430;--tinta:#E6F1F2;--gris:#93AAB4;--linea:#183849;
+    --arena:#2C3A38;--mar:#7FCDE6;--shadow:0 16px 40px rgba(0,0,0,.45);
+    --shadow-sm:0 2px 10px rgba(0,0,0,.3);
+  }
+}
+
+/* --------------------------------------------------------------- 2. BASE */
+*{box-sizing:border-box}
+html{font-size:16px;background:var(--sal);-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--sal);color:var(--tinta);
+  font-family:var(--body);font-size:.95rem;line-height:1.5;
+  min-height:100dvh;padding-bottom:calc(80px + var(--safe-bottom));
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea,select{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.03em;margin:0}
+.hidden{display:none!important}
+.screen{display:none}.screen.active{display:block}
+:focus-visible{outline:3px solid var(--levante);outline-offset:2px;border-radius:6px}
+.ico-svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.ico-lg{width:24px;height:24px}
+button,.action,.quick,.manual-card,.help-btn,.essential-card,.guide-card,.origin-btn,.next-action{
+  transition:transform .12s var(--ease),background-color .18s var(--ease),border-color .18s var(--ease);
+}
+button:active,.action:active,.quick:active,.manual-card:active,.help-btn:active,
+.essential-card:active,.guide-card:active,.next-action:active{transform:scale(.975)}
+
+/* ------------------------------------------------------- 3. BARRA SUPERIOR */
+.topbar{
+  position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:var(--s3);
+  padding:calc(var(--s3) + var(--safe-top)) var(--s4) var(--s3);
+  background:color-mix(in oklab,var(--sal) 86%,transparent);
+  backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
+  border-bottom:1px solid var(--linea);
+}
+.brand{display:flex;align-items:center;gap:var(--s3);flex:1;min-width:0}
+.brand-mark{width:32px;height:32px;flex:none;line-height:0}
+.brand-copy{min-width:0;line-height:1.18}
+.brand-copy strong{
+  display:block;font-family:var(--display);font-size:.9rem;letter-spacing:-.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.brand-copy span{font-size:.68rem;color:var(--gris)}
+.lang{
+  flex:none;min-height:38px;padding:0 var(--s3);border-radius:999px;
+  border:1px solid var(--linea);background:var(--cal);
+  color:var(--gris);font-weight:650;font-size:.76rem;
+}
+
+/* ------------------------------------------------------------ 4. PORTADA */
+.shell{max-width:560px;margin:0 auto}
+.hero{
+  position:relative;overflow:hidden;color:var(--sobre-luz);
+  padding:var(--s8) var(--s5) var(--s10);
+  background-color:var(--luz-a);
+  background-image:
+    radial-gradient(130% 90% at 78% 6%,color-mix(in oklab,var(--luz-c) 42%,transparent),transparent 58%),
+    linear-gradient(163deg,var(--luz-a) 0%,var(--luz-b) 62%,var(--luz-c) 150%);
+  background-size:cover;background-position:center;
+  transition:background-color .8s var(--ease);
+}
+.hero-content{position:relative;z-index:2}
+.eyebrow{
+  font-family:var(--data);font-size:.66rem;font-weight:600;letter-spacing:.17em;
+  text-transform:uppercase;opacity:.84;font-variant-numeric:tabular-nums;
+}
+.hero h1{font-size:clamp(2.05rem,9vw,2.85rem);line-height:1;margin:var(--s3) 0 var(--s3);max-width:13ch}
+.hero p{margin:0;font-size:.95rem;opacity:.9;max-width:32ch;line-height:1.5}
+.metric-line{
+  margin-top:var(--s4);display:flex;align-items:center;gap:9px;
+  font-family:var(--data);font-variant-numeric:tabular-nums;font-size:.78rem;
+}
+.metric-line::before{content:"";width:16px;height:1px;background:currentColor;opacity:.5;flex:none}
+.metric-line b{font-weight:650}
+.metric-line span{opacity:.72}
+.hero-status{margin-top:var(--s5);display:flex;gap:var(--s2);flex-wrap:wrap}
+.status-pill{
+  display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:650;
+  padding:6px 11px;border-radius:999px;
+  background:color-mix(in oklab,var(--sobre-luz) 16%,transparent);
+  border:1px solid color-mix(in oklab,var(--sobre-luz) 22%,transparent);
+}
+.status-pill.good{background:color-mix(in oklab,var(--verde) 34%,transparent);border-color:color-mix(in oklab,var(--sobre-luz) 30%,transparent)}
+.status-pill .ico-svg{width:14px;height:14px}
+
+/* ═══════════════ 5. EL ESPINAZO · elemento firma ═══════════════ */
+.content{padding:0 var(--s4) var(--s8)}
+.phase-card{
+  position:relative;z-index:5;margin-top:calc(var(--s6) * -1);
+  background:var(--cal);border-radius:var(--r-xl);padding:var(--s5) var(--s5) var(--s4);
+  box-shadow:0 18px 44px rgba(8,44,60,.14);
+}
+.spine-head{
+  font-family:var(--data);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--gris);margin-bottom:var(--s4);
+}
+.node{position:relative;padding-left:30px;padding-bottom:var(--s5)}
+.node:last-child{padding-bottom:0}
+.node::before{content:"";position:absolute;left:8px;top:10px;bottom:-8px;width:2px;background:var(--linea)}
+.node:last-child::before{display:none}
+.node.done::before{background:var(--levante)}
+.node-dot{
+  position:absolute;left:0;top:1px;z-index:2;width:18px;height:18px;border-radius:50%;
+  border:2px solid var(--linea);background:var(--cal);display:grid;place-items:center;color:transparent;
+}
+.node.done .node-dot{background:var(--levante);border-color:var(--levante);color:#fff}
+.node.done .node-dot .ico-svg{width:11px;height:11px;stroke-width:2.8}
+.node.now .node-dot{
+  border-color:var(--luz-c);border-width:3px;
+  box-shadow:0 0 0 5px color-mix(in oklab,var(--luz-c) 18%,transparent);
+}
+.node-title{
+  display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);
+  font-family:var(--display);font-size:.95rem;font-weight:650;letter-spacing:-.02em;
+}
+.node.future .node-title{color:var(--gris);font-weight:550}
+.node-when{
+  font-family:var(--data);font-size:.68rem;color:var(--gris);white-space:nowrap;
+  font-variant-numeric:tabular-nums;flex:none;
+}
+.node-body{margin-top:var(--s3);display:none}
+.node.now .node-body{display:block}
+.node-note{font-size:.81rem;color:var(--gris);margin:0 0 var(--s3);line-height:1.45}
+.next-action{
+  display:flex;align-items:center;gap:var(--s3);width:100%;text-align:left;
+  border:1px solid color-mix(in oklab,var(--luz-c) 34%,transparent);
+  background:color-mix(in oklab,var(--luz-c) 8%,var(--cal));
+  border-radius:var(--r-m);padding:var(--s3) var(--s4);cursor:pointer;
+}
+.next-ico{width:38px;height:38px;border-radius:11px;flex:none;display:grid;place-items:center;background:var(--luz-b);color:var(--sobre-luz)}
+.next-copy{flex:1;min-width:0}
+.next-copy b{display:block;font-size:.87rem;font-weight:650;letter-spacing:-.01em}
+.next-copy span{display:block;font-size:.72rem;color:var(--gris);margin-top:1px}
+.next-chev{color:var(--gris);flex:none}
+.mini-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);margin-top:var(--s2)}
+.mini-action{
+  display:flex;align-items:center;justify-content:center;gap:var(--s2);
+  font-size:.78rem;font-weight:650;border:1px solid var(--linea);border-radius:var(--r-s);
+  padding:10px var(--s3);background:var(--cal);color:var(--tinta);cursor:pointer;min-height:42px;
+}
+.mini-action .ico-svg{width:16px;height:16px;color:var(--mar)}
+.mini-action.urgent{border-color:color-mix(in oklab,var(--toldo) 42%,transparent);color:var(--toldo)}
+.mini-action.urgent .ico-svg{color:var(--toldo)}
+.progress{height:5px;border-radius:999px;background:var(--linea);margin-top:var(--s4);overflow:hidden}
+.progress>span{
+  display:block;height:100%;border-radius:inherit;
+  background:linear-gradient(90deg,var(--luz-b),var(--luz-c));transition:width .6s var(--ease);
+}
+/* piezas heredadas del antiguo phase-card, conservadas por compatibilidad */
+.phase-row{display:flex;align-items:center;gap:var(--s3)}
+.phase-icon{width:46px;height:46px;border-radius:14px;flex:none;display:grid;place-items:center;background:color-mix(in oklab,var(--luz-c) 14%,var(--cal));color:var(--mar)}
+.phase-copy{flex:1;min-width:0}
+.phase-copy h2{font-size:1.05rem;color:var(--mar);margin:0 0 2px}
+.phase-copy p{margin:0;color:var(--gris);font-size:.78rem;line-height:1.4}
+
+/* Llegar y Moverse son pantallas de referencia con cabecera propia:
+   la portada y el espinazo pertenecen a "Ahora". */
+body[data-view="travel"] .hero,body[data-view="move"] .hero,
+body[data-view="travel"] .phase-card,body[data-view="move"] .phase-card{display:none}
+body[data-view="travel"] .content,body[data-view="move"] .content{padding-top:0}
+
+/* ---------------------------------------------------------- 6. SECCIONES */
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);margin:var(--s8) var(--s1) var(--s4)}
+.section-head>*:first-child{flex:1;min-width:0}
+.section-head h2{font-size:1.25rem;color:var(--mar);letter-spacing:-.035em;overflow-wrap:anywhere}
+/* Sólo el <span> hijo directo es el metadato en versalitas. El <p> de una
+   cabecera es texto descriptivo y debe fluir con normalidad. */
+.section-head>span{
+  margin:0;font-family:var(--data);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--gris);white-space:nowrap;flex:none;max-width:46%;text-align:right;
+}
+.section-head p{margin:var(--s1) 0 0;font-size:.76rem;color:var(--gris);line-height:1.4}
+.card{background:var(--cal);border:1px solid var(--linea);border-radius:var(--r-l);padding:var(--s4);box-shadow:var(--shadow-sm)}
+.card-title{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);margin-bottom:var(--s3)}
+.card-title h3{font-size:.97rem;color:var(--mar)}
+.card-title .ico,.card-title .emoji{color:var(--mar)}
+.card-actions{display:grid;gap:var(--s2);margin-top:var(--s3)}
+.subtle{font-size:.79rem;color:var(--gris);line-height:1.45}
+.label{color:var(--gris);font-size:.63rem;font-weight:650;letter-spacing:.1em;text-transform:uppercase;margin-top:var(--s2)}
+.metric{font-family:var(--data);font-variant-numeric:tabular-nums;font-size:2rem;font-weight:600;line-height:1;letter-spacing:-.04em;color:var(--mar)}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px var(--s2);border-radius:999px;font-size:.66rem;font-weight:700}
+.badge.good{color:#0B6247;background:color-mix(in oklab,var(--verde) 15%,var(--cal))}
+.badge.wait{color:#7A5307;background:color-mix(in oklab,var(--sol) 26%,var(--cal))}
+.badge.lock{color:#6B4A05;background:var(--arena)}
+.badge.alert{color:#8E2A12;background:color-mix(in oklab,var(--toldo) 15%,var(--cal))}
+.home-summary-stack{display:grid;gap:var(--s3)}
+.stay-overview-card{background:var(--cal);border:1px solid var(--linea);border-radius:var(--r-l);padding:var(--s4);box-shadow:var(--shadow-sm)}
+.stay-times{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);margin-top:var(--s3)}
+.stay-time{background:color-mix(in oklab,var(--mar) 5%,transparent);border-radius:var(--r-m);padding:var(--s3)}
+.stay-time b{display:block;font-family:var(--data);font-variant-numeric:tabular-nums;font-size:1.15rem;font-weight:600;letter-spacing:-.02em}
+.stay-time span{display:block;font-size:.66rem;color:var(--gris);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.arrival-date{font-family:var(--data);font-variant-numeric:tabular-nums;font-size:.82rem;color:var(--gris)}
+.address-detail{font-size:.79rem;color:var(--gris);line-height:1.45;margin-top:var(--s2)}
+.maps-hint{font-size:.72rem;color:var(--gris);margin-top:var(--s2)}
+
+/* ------------------------------------------------------------- 7. ACCIÓN */
+.actions{display:grid;gap:var(--s2);margin-top:var(--s3)}
+.action{
+  width:100%;min-height:48px;border:0;border-radius:var(--r-m);padding:var(--s3) var(--s4);
+  font-weight:650;font-size:.87rem;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:var(--s2);text-decoration:none;letter-spacing:-.01em;
+}
+.action.primary{
+  color:#fff;background:var(--blue);
+  background:linear-gradient(140deg,var(--blue),color-mix(in oklab,var(--blue) 74%,#08303F));
+  box-shadow:0 8px 20px color-mix(in oklab,var(--blue) 28%,transparent);
+}
+.action.secondary{
+  color:var(--mar);background:color-mix(in oklab,var(--blue) 8%,var(--cal));
+  border:1px solid color-mix(in oklab,var(--blue) 22%,transparent);
+}
+.action.success{color:#fff;background:linear-gradient(140deg,#1A7F5A,#16946A)}
+.action.danger{color:#fff;background:linear-gradient(140deg,var(--toldo),#DD6248);box-shadow:0 8px 20px rgba(199,69,44,.26)}
+.action:disabled{opacity:.42;cursor:not-allowed;box-shadow:none;transform:none}
+.quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2)}
+.quick{
+  border:1px solid var(--linea);background:var(--cal);border-radius:var(--r-m);
+  padding:var(--s3) 4px;text-align:center;min-height:84px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:var(--s2);color:var(--tinta);cursor:pointer;box-shadow:var(--shadow-sm);
+}
+.quick>span:first-child{
+  width:36px;height:36px;border-radius:11px;display:grid;place-items:center;
+  background:color-mix(in oklab,var(--mar) 8%,var(--cal));color:var(--mar);
+}
+.quick b{font-size:.68rem;font-weight:650;line-height:1.18}
+
+/* --------------------------------------------------- 8. LLEGADA / TIMELINE */
+.timeline{display:grid;gap:var(--s3);position:relative}
+.step{
+  position:relative;background:var(--cal);border:1px solid var(--linea);border-radius:var(--r-l);
+  padding:var(--s4);display:grid;grid-template-columns:42px 1fr;gap:var(--s3);box-shadow:var(--shadow-sm);
+}
+.step-num{
+  width:42px;height:42px;border-radius:13px;flex:none;
+  background:linear-gradient(150deg,var(--mar),color-mix(in oklab,var(--mar) 62%,var(--levante)));
+  color:#fff;font-family:var(--display);font-weight:700;font-size:1.05rem;display:grid;place-items:center;
+  box-shadow:0 6px 14px color-mix(in oklab,var(--mar) 28%,transparent);
+}
+.step h3{font-size:.92rem;margin:2px 0 3px;color:var(--mar)}
+.step p{font-size:.8rem;color:var(--gris);line-height:1.45;margin:0}
+.step img,.media{width:100%;height:158px;object-fit:cover;border-radius:var(--r-s);margin-top:var(--s3);background:var(--arena)}
+.placeholder{
+  height:118px;border-radius:var(--r-s);margin-top:var(--s3);display:grid;place-items:center;
+  text-align:center;padding:var(--s3);color:#7A6034;font-size:.72rem;font-weight:650;
+  background:repeating-linear-gradient(135deg,var(--arena) 0 10px,color-mix(in oklab,var(--arena) 60%,var(--cal)) 10px 20px);
+}
+.locked{filter:saturate(.2);opacity:.62}
+.lock-note{margin-top:var(--s2);padding:var(--s3);border-radius:var(--r-s);background:var(--arena);color:#6B4A05;font-size:.72rem;line-height:1.4}
+.journey-first{
+  background:linear-gradient(150deg,var(--mar),var(--mar-900));color:#EAF6F7;
+  border-radius:var(--r-l);padding:var(--s5);
+}
+.journey-head{font-family:var(--display);font-size:1.05rem;font-weight:700;letter-spacing:-.025em;margin-bottom:var(--s2)}
+.journey-first .subtle{color:rgba(234,246,247,.78)}
+.transport-options{display:grid;gap:var(--s2);margin-top:var(--s4)}
+.transport-option{
+  display:flex;align-items:center;gap:var(--s3);width:100%;text-align:left;cursor:pointer;
+  border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);
+  border-radius:var(--r-m);padding:var(--s3);color:inherit;font-size:.84rem;font-weight:650;
+}
+.transport-option .ico{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.16)}
+.choice-pill{
+  display:inline-flex;align-items:center;gap:6px;margin-top:var(--s3);
+  padding:6px 11px;border-radius:999px;font-size:.72rem;font-weight:650;
+  background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);
+}
+.guide-grid{display:grid;gap:var(--s2)}
+.guide-card{
+  display:flex;align-items:center;gap:var(--s3);width:100%;text-align:left;cursor:pointer;
+  background:var(--cal);border:1px solid var(--linea);border-radius:var(--r-m);padding:var(--s3) var(--s4);
+  color:var(--tinta);box-shadow:var(--shadow-sm);
+}
+.guide-card .ico{width:38px;height:38px;flex:none;border-radius:11px;display:grid;place-items:center;background:color-mix(in oklab,var(--mar) 8%,transparent);color:var(--mar)}
+.guide-card b{display:block;font-size:.85rem;font-weight:650}
+.guide-card span{display:block;font-size:.72rem;color:var(--gris);margin-top:1px}
+.premium-handover{background:linear-gradient(150deg,color-mix(in oklab,var(--sol) 16%,var(--cal)),var(--cal));border:1px solid color-mix(in oklab,var(--sol) 32%,transparent);border-radius:var(--r-l);padding:var(--s4)}
+.premium-kicker{font-family:var(--data);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:#8A5F0C}
+.premium-time{font-family:var(--data);font-variant-numeric:tabular-nums;font-size:1.5rem;font-weight:600;letter-spacing:-.03em;margin-top:var(--s2)}
+.premium-note{font-size:.79rem;color:var(--gris);line-height:1.45;margin-top:var(--s2)}
+.backup-card{background:var(--cal);border:1px dashed var(--linea);border-radius:var(--r-m);padding:var(--s4);margin-top:var(--s3)}
+.delay-card,.departure-card{background:var(--cal);border:1px solid var(--linea);border-radius:var(--r-l);padding:var(--s4);box-shadow:var(--shadow-sm)}
+
+/* ═══════════ 9. CÓMO LLEGAR / VOLVER (nuevo) ═══════════ */
+.page-head{padding:var(--s6) 0 0}
+.page-head h1{font-size:1.75rem;color:var(--mar);letter-spacing:-.035em}
+.page-head p{margin:var(--s2) 0 0;font-size:.83rem;color:var(--gris);max-width:34ch;line-height:1.45}
+.dir-toggle{display:flex;gap:3px;padding:3px;background:color-mix(in oklab,var(--mar) 8%,transparent);border-radius:999px;margin-top:var(--s4)}
+.dir-toggle button{flex:1;padding:9px 6px;border-radius:999px;font-size:.79rem;font-weight:650;color:var(--gris);border:0;background:none;cursor:pointer}
+.dir-toggle button.active{background:var(--cal);color:var(--mar);box-shadow:0 1px 4px rgba(8,44,60,.1)}
+.origin-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);margin-top:var(--s3)}
+.origin-btn{
+  display:flex;align-items:center;gap:var(--s3);padding:var(--s3);border-radius:var(--r-m);
+  border:1.5px solid var(--linea);background:var(--cal);text-align:left;cursor:pointer;
+  font-size:.8rem;font-weight:650;line-height:1.2;color:var(--tinta);
+}
+.origin-btn .ico{width:32px;height:32px;flex:none;border-radius:10px;display:grid;place-items:center;background:color-mix(in oklab,var(--mar) 8%,transparent);color:var(--mar)}
+.origin-btn small{display:block;font-weight:400;font-size:.67rem;color:var(--gris);margin-top:1px}
+.origin-btn.active{border-color:var(--mar);background:color-mix(in oklab,var(--mar) 5%,var(--cal))}
+.origin-btn.active .ico{background:var(--mar);color:#fff}
+.route-card{background:var(--cal);border:1px solid var(--linea);border-radius:var(--r-l);padding:var(--s4);margin-top:var(--s3);box-shadow:var(--shadow-sm)}
+.route-card.best{border-color:color-mix(in oklab,var(--levante) 45%,transparent);box-shadow:0 6px 20px color-mix(in oklab,var(--levante) 12%,transparent)}
+.route-tag{display:inline-block;font-family:var(--data);font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;padding:3px 8px;border-radius:5px;background:var(--levante);color:#fff;margin-bottom:var(--s3);font-weight:650}
+.route-top{display:flex;align-items:center;gap:var(--s3)}
+.route-top .ico{width:40px;height:40px;flex:none;border-radius:11px;display:grid;place-items:center;background:color-mix(in oklab,var(--mar) 8%,transparent);color:var(--mar)}
+.route-top h3{font-size:.98rem;letter-spacing:-.02em;color:var(--mar)}
+.route-facts{display:flex;gap:var(--s3);margin-top:3px;font-family:var(--data);font-size:.7rem;color:var(--gris);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.route-facts b{color:var(--tinta);font-weight:600}
+.route-steps{margin:var(--s4) 0 0;padding:0;list-style:none}
+.route-steps li{position:relative;padding:0 0 var(--s3) 26px;font-size:.81rem;line-height:1.45}
+.route-steps li::before{content:"";position:absolute;left:5px;top:6px;width:7px;height:7px;border-radius:50%;background:var(--mar);z-index:2}
+.route-steps li::after{content:"";position:absolute;left:8px;top:12px;bottom:0;width:1.5px;background:var(--linea)}
+.route-steps li:last-child{padding-bottom:0}
+.route-steps li:last-child::after{display:none}
+.route-steps li b{font-weight:650}
+.route-steps li span{display:block;color:var(--gris);font-size:.76rem;margin-top:1px}
+.route-tip{display:flex;gap:var(--s3);margin-top:var(--s3);padding:var(--s3);border-radius:var(--r-m);background:color-mix(in oklab,var(--sol) 14%,transparent);font-size:.77rem;line-height:1.45}
+.route-tip .ico-svg{color:#8A5F0C;flex:none;margin-top:1px}
+
+/* ═══════════ 10. MOVERSE POR BENIDORM (nuevo) ═══════════ */
+.stop-card{background:linear-gradient(150deg,var(--mar),var(--mar-900));color:#EAF6F7;border-radius:var(--r-l);padding:var(--s5)}
+.stop-card .label{color:rgba(234,246,247,.75);margin:0}
+.stop-card b{display:block;font-family:var(--display);font-size:1.12rem;letter-spacing:-.025em;margin-top:6px}
+.stop-card>span{display:block;font-size:.76rem;opacity:.82;margin-top:2px}
+.stop-lines{display:flex;gap:6px;margin-top:var(--s4);flex-wrap:wrap}
+.stop-lines span{font-family:var(--data);font-size:.75rem;font-weight:650;padding:5px 9px;border-radius:7px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22)}
+.mobility-panel{background:var(--cal);border:1px solid var(--linea);border-radius:var(--r-l);padding:var(--s2) var(--s4);box-shadow:var(--shadow-sm)}
+.line-row{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--linea)}
+.line-row:last-child{border-bottom:0}
+.line-badge{
+  font-family:var(--data);font-size:.79rem;font-weight:700;flex:none;min-width:44px;text-align:center;
+  padding:7px 6px;border-radius:8px;background:var(--mar);letter-spacing:.02em;
+}
+.line-row span.line-badge{color:#fff;display:inline-block;margin-top:0}
+.line-badge.tram{background:var(--levante)}
+.line-row div{flex:1;min-width:0}
+.line-row div b{display:block;font-size:.82rem;font-weight:650;letter-spacing:-.01em}
+.line-row div span{display:block;font-size:.72rem;color:var(--gris);margin-top:1px}
+.walk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+.walk-grid div{background:var(--cal);border:1px solid var(--linea);border-radius:var(--r-m);padding:var(--s3);text-align:center}
+.walk-grid b{display:block;font-family:var(--data);font-size:1.1rem;font-weight:600;font-variant-numeric:tabular-nums;color:var(--mar)}
+.walk-grid span{display:block;font-size:.68rem;color:var(--gris);margin-top:2px;line-height:1.25}
+
+/* ------------------------------------------------------------ 11. MANUAL */
+.manual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
+.manual-card{
+  background:var(--cal);border:1px solid var(--linea);border-radius:var(--r-l);padding:var(--s4);
+  cursor:pointer;min-height:142px;text-align:left;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;color:var(--tinta);
+}
+.manual-card .emoji{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:color-mix(in oklab,var(--mar) 8%,var(--cal));color:var(--mar);font-size:1.2rem}
+.manual-card h3{font-size:.86rem;margin:var(--s3) 0 3px;color:var(--mar)}
+.manual-card p{font-size:.73rem;color:var(--gris);line-height:1.4;margin:0}
+
+/* ------------------------------------- 12. LISTAS (ayuda, esenciales, ops) */
+.help-list,.essential-list,.operation-list,.useful-grid,.beach-links{display:grid;gap:var(--s2)}
+.help-btn,.essential-card,.operation-card,.useful-card,.safety-card,.waste-card,.beach-card{
+  width:100%;border:1px solid var(--linea);background:var(--cal);border-radius:var(--r-l);
+  padding:var(--s4);text-align:left;display:flex;align-items:center;gap:var(--s3);
+  box-shadow:var(--shadow-sm);color:var(--tinta);text-decoration:none;
+}
+.essential-card,.essential-card *{text-decoration:none;color:inherit}
+.help-btn{cursor:pointer}
+.help-btn .ico,.essential-card .ico,.operation-card .ico,.useful-card .ico,.safety-card .ico,.waste-card .ico{
+  width:44px;height:44px;border-radius:13px;flex:none;display:grid;place-items:center;
+  background:color-mix(in oklab,var(--mar) 8%,var(--cal));color:var(--mar);font-size:1.15rem;
+}
+.help-btn b,.essential-card b,.operation-card b,.useful-card b,.safety-card b{display:block;font-size:.85rem;font-weight:650;color:var(--mar)}
+.help-btn span,.essential-card span,.operation-card span,.useful-card span,.safety-card span{
+  display:block;color:var(--gris);font-size:.72rem;margin-top:2px;line-height:1.35;
+}
+.help-btn.danger,.help-btn.urgent{
+  border-color:color-mix(in oklab,var(--toldo) 42%,transparent);
+  background:color-mix(in oklab,var(--toldo) 5%,var(--cal));
+}
+.help-btn.danger .ico,.help-btn.urgent .ico{background:color-mix(in oklab,var(--toldo) 14%,var(--cal));color:var(--toldo)}
+.help-btn.danger b,.help-btn.urgent b{color:#A83B22}
+.useful-grid{grid-template-columns:1fr}
+.useful-actions{display:flex;gap:var(--s2);margin-top:var(--s3);flex-wrap:wrap}
+.safety-hero{background:linear-gradient(150deg,color-mix(in oklab,var(--toldo) 12%,var(--cal)),var(--cal));border:1px solid color-mix(in oklab,var(--toldo) 30%,transparent);border-radius:var(--r-l);padding:var(--s4)}
+.safety-list{display:grid;gap:var(--s2);margin-top:var(--s3)}
+.operation-card{align-items:flex-start}
+
+/* -------------------------------------------------------- 13. FORMULARIOS */
+.form{display:grid;gap:var(--s3)}
+.field label{display:block;font-size:.64rem;font-weight:700;color:var(--gris);letter-spacing:.09em;text-transform:uppercase;margin-bottom:var(--s2)}
+.field input,.field textarea,.field select{
+  width:100%;border:2px solid var(--linea);border-radius:var(--r-s);padding:var(--s3);
+  background:var(--cal);outline:none;font-size:16px;
+  transition:border-color .16s var(--ease),box-shadow .16s var(--ease);
+}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--mar);box-shadow:0 0 0 4px color-mix(in oklab,var(--mar) 15%,transparent)}
+.field textarea{min-height:106px;resize:vertical}
+.photo-preview{width:100%;max-height:220px;object-fit:contain;border-radius:var(--r-s);background:var(--arena);margin-top:var(--s2)}
+.success-box{background:color-mix(in oklab,var(--verde) 12%,var(--cal));border:1px solid color-mix(in oklab,var(--verde) 34%,transparent);border-radius:var(--r-m);padding:var(--s4);color:#0B6247;font-weight:600}
+.warning-box{background:var(--arena);border:1px solid color-mix(in oklab,var(--sol) 45%,transparent);border-radius:var(--r-m);padding:var(--s4);color:#6B4A05}
+
+/* ------------------------------------------------------------- 14. SALIDA */
+.checkout-list{display:grid;gap:var(--s2)}
+.check-row{
+  display:flex;align-items:center;gap:var(--s3);background:var(--cal);border:1px solid var(--linea);
+  border-radius:var(--r-m);padding:var(--s3) var(--s4);cursor:pointer;
+  transition:border-color .16s var(--ease),background-color .16s var(--ease);
+}
+.check-row:has(.checkout-check:checked){border-color:color-mix(in oklab,var(--verde) 45%,transparent);background:color-mix(in oklab,var(--verde) 6%,var(--cal))}
+.check-row input,.checkout-check{width:23px;height:23px;flex:none;accent-color:var(--verde);cursor:pointer}
+.check-row:has(.checkout-check:checked) span{color:var(--gris)}
+
+/* ----------------------------------------------- 15. METEOROLOGÍA Y PLAYAS */
+.weather-panel,.beach-panel{background:var(--cal);border:1px solid var(--linea);border-radius:var(--r-l);padding:var(--s4);box-shadow:var(--shadow-sm)}
+.weather-head,.beach-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3)}
+.weather-strip{display:flex;gap:var(--s2);overflow-x:auto;scrollbar-width:none;margin:0 calc(var(--s4) * -1);padding:0 var(--s4)}
+.weather-strip::-webkit-scrollbar{display:none}
+.weather-day{flex:none;width:64px;text-align:center;padding:var(--s3) 2px;border-radius:var(--r-s);background:color-mix(in oklab,var(--mar) 5%,transparent)}
+.weather-date{display:block;font-family:var(--data);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gris)}
+.weather-icon{display:block;font-size:1.35rem;margin:7px 0}
+.weather-temp{display:block;font-family:var(--data);font-variant-numeric:tabular-nums;font-size:.82rem;font-weight:600}
+.weather-temp i{font-style:normal;color:var(--gris);font-weight:400}
+.weather-description{display:block;font-size:.62rem;color:var(--gris);margin-top:3px;line-height:1.2}
+.weather-meta{font-size:.7rem;color:var(--gris)}
+.weather-advice,.beach-advice{margin-top:var(--s3);padding:var(--s3);border-radius:var(--r-m);background:color-mix(in oklab,var(--sol) 13%,transparent);font-size:.78rem;line-height:1.45}
+.weather-empty{font-size:.79rem;color:var(--gris);padding:var(--s3) 0}
+.weather-source,.beach-source{margin-top:var(--s3);font-family:var(--data);font-size:.57rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);opacity:.85}
+.beach-grid{display:grid;gap:var(--s2)}
+.beach-card{display:block}
+.beach-primary{font-size:.88rem;font-weight:650;color:var(--mar)}
+.beach-metrics{display:flex;gap:var(--s3);flex-wrap:wrap;margin-top:var(--s2)}
+.beach-metric{font-family:var(--data);font-size:.72rem;color:var(--gris);font-variant-numeric:tabular-nums}
+.beach-metric b{color:var(--tinta);font-weight:600}
+.beach-water{font-family:var(--data);font-variant-numeric:tabular-nums;font-weight:600}
+.beach-warning{margin-top:var(--s3);padding:var(--s3);border-radius:var(--r-m);background:color-mix(in oklab,var(--toldo) 9%,transparent);color:#A83B22;font-size:.77rem;line-height:1.45;font-weight:600}
+.beach-link{display:inline-flex;align-items:center;gap:6px;font-size:.76rem;font-weight:650;color:var(--mar);text-decoration:none}
+
+/* ------------------------------------------------------------ 16. RESIDUOS */
+.waste-grid{display:grid;gap:var(--s2)}
+.waste-bin{display:flex;align-items:center;gap:var(--s3);padding:var(--s3);border:1px solid var(--linea);border-radius:var(--r-m);background:var(--cal);font-size:.8rem}
+.waste-rules{display:grid;gap:var(--s2);margin-top:var(--s3)}
+.waste-location{font-size:.79rem;color:var(--gris);line-height:1.45}
+.waste-photos{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);margin-top:var(--s3)}
+.waste-photo{width:100%;height:118px;object-fit:cover;border-radius:var(--r-s);background:var(--arena)}
+
+/* ------------------------------------------------------- 17. NAVEGACIÓN */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;display:grid;grid-template-columns:repeat(5,1fr);
+  padding:6px 6px calc(6px + var(--safe-bottom));
+  background:color-mix(in oklab,var(--cal) 88%,transparent);
+  backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);
+  border-top:1px solid var(--linea);
+}
+.nav-btn{
+  position:relative;border:0;background:transparent;color:var(--gris);min-height:52px;
+  padding:3px 2px;border-radius:var(--r-s);font-size:.6rem;font-weight:650;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;
+}
+.nav-btn.active{color:var(--mar)}
+.nav-btn.active::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:20px;height:3px;border-radius:0 0 3px 3px;background:var(--mar)}
+.nav-btn b{font-weight:650}
+
+/* --------------------------------------------------------- 18. HOJA MODAL */
+.detail{position:fixed;inset:0;z-index:80;display:none;align-items:flex-end;background:rgba(4,20,28,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.detail.open{display:flex;animation:veil .22s var(--ease) both}
+.detail-sheet{
+  width:100%;max-height:90dvh;overflow:auto;background:var(--cal);
+  border-radius:var(--r-xl) var(--r-xl) 0 0;
+  padding:var(--s6) var(--s5) calc(var(--s6) + var(--safe-bottom));
+  box-shadow:0 -20px 60px rgba(0,0,0,.28);animation:sheet .3s var(--ease) both;
+}
+.detail-sheet::before{content:"";display:block;width:40px;height:4px;border-radius:99px;background:var(--linea);margin:calc(var(--s5) * -1 + 2px) auto var(--s4)}
+.detail-close{float:right;border:0;background:color-mix(in oklab,var(--mar) 8%,var(--cal));color:var(--mar);border-radius:50%;width:40px;height:40px;font-size:1.2rem;cursor:pointer}
+.detail h2{font-size:1.35rem;color:var(--mar);margin:var(--s2) 0 var(--s3);letter-spacing:-.03em}
+.detail p{color:var(--gris);line-height:1.6}
+.detail img{width:100%;border-radius:var(--r-m);max-height:300px;object-fit:cover}
+@keyframes veil{from{opacity:0}to{opacity:1}}
+@keyframes sheet{from{transform:translateY(26px)}to{transform:none}}
+
+/* ------------------------------------------------- 19. ESTADOS Y AVISOS */
+.loading-screen,.error-screen{min-height:100dvh;padding:calc(48px + var(--safe-top)) var(--s6) calc(var(--s8) + var(--safe-bottom));display:grid;place-items:center}
+.state-card{max-width:460px;width:100%;background:var(--cal);border-radius:var(--r-xl);padding:var(--s8) var(--s6);box-shadow:var(--shadow);text-align:center}
+.state-icon{font-size:2.6rem;line-height:1}
+.state-card h1{font-size:1.4rem;color:var(--mar);margin:var(--s4) 0 var(--s2)}
+.spinner{width:38px;height:38px;border:3px solid var(--linea);border-top-color:var(--mar);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto var(--s4)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{
+  position:fixed;z-index:120;left:50%;bottom:calc(86px + var(--safe-bottom));
+  transform:translate(-50%,18px);opacity:0;pointer-events:none;
+  background:var(--mar-900);color:#fff;border-radius:var(--r-s);padding:var(--s3) var(--s4);
+  max-width:min(88vw,460px);font-size:.8rem;font-weight:550;
+  box-shadow:0 12px 32px rgba(0,0,0,.3);transition:.24s var(--ease);
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------------------------------------------------------- 20. TAMAÑOS */
+@media (min-width:700px){
+  .content{padding:0 var(--s6) var(--s8)}
+  .manual-grid{grid-template-columns:repeat(3,1fr)}
+  .hero{border-radius:0 0 var(--r-xl) var(--r-xl)}
+  .bottom-nav{left:50%;right:auto;transform:translateX(-50%);width:min(560px,100%);border:1px solid var(--linea);border-bottom:0;border-radius:var(--r-l) var(--r-l) 0 0}
+  .detail{align-items:center;justify-content:center}
+  .detail-sheet{max-width:560px;border-radius:var(--r-xl);max-height:86dvh}
+  .detail-sheet::before{display:none}
+}
+@media (max-width:380px){
+  .quick-grid{grid-template-columns:repeat(2,1fr)}
+  .stay-times{grid-template-columns:1fr}
+  .nav-btn{font-size:.55rem}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+}
+
+.v19-video,.v19-photo{display:block;width:100%;max-height:460px;object-fit:contain;border-radius:12px;margin:12px 0}.v19-video{background:#082d3c;aspect-ratio:16/9}.v19-point,.v19-meeting{margin:16px 0}.v19-meeting h2{font-size:1.4rem}.v19-preview{position:sticky;top:0;z-index:999;background:#ffe9b9;color:#33220b;padding:10px;text-align:center;font-weight:700}.hero{padding-top:20px;padding-bottom:32px}.hero h1{font-size:2rem}.phase-card{margin-top:12px}body[data-view="travel"] .phase-card,body[data-view="apartment"] .phase-card,body[data-view="help"] .phase-card{display:none}
+</style>
+</head>
+<body>
+<div id="loading-screen" class="loading-screen"><div class="state-card"><div class="spinner" aria-hidden="true"></div><h1 id="loading-title">Preparando tu estancia</h1><p id="loading-message" class="subtle">Estamos reuniendo la información exacta de tu reserva y apartamento.</p></div></div>
+<div id="error-screen" class="error-screen hidden"><div class="state-card"><div class="state-icon" aria-hidden="true">🌊</div><h1 id="error-title">No pudimos abrir tu estancia</h1><p id="error-message" class="subtle"></p><div class="actions"><button id="retry-button" class="action primary" onclick="retryInit()">Volver a intentar</button></div></div></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<symbol id="s-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="s-chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="s-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+<symbol id="s-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4"/><circle cx="12" cy="16.6" r="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="s-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="s-key" viewBox="0 0 24 24"><circle cx="8" cy="8" r="4"/><path d="m11 11 8 8M16 16l2-2M19 19l1.5-1.5"/></symbol>
+<symbol id="s-wifi" viewBox="0 0 24 24"><path d="M2 8.8a16 16 0 0 1 20 0M5.5 12.4a11 11 0 0 1 13 0M9 16a6 6 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1.1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="s-home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.5l8.5 7M5.5 9.2V20h13V9.2"/><path d="M10 20v-5.5h4V20"/></symbol>
+<symbol id="s-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.4"/><circle cx="18" cy="5" r="2.4"/><path d="M8.4 19H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.6"/></symbol>
+<symbol id="s-pin" viewBox="0 0 24 24"><path d="M12 21.5s7-6.2 7-11.1A7 7 0 0 0 5 10.4c0 4.9 7 11.1 7 11.1z"/><circle cx="12" cy="10.2" r="2.6"/></symbol>
+<symbol id="s-book" viewBox="0 0 24 24"><path d="M4 4.5h6a3 3 0 0 1 3 3v12a2.4 2.4 0 0 0-2.4-2.4H4zM20 4.5h-6a3 3 0 0 0-3 3v12a2.4 2.4 0 0 1 2.4-2.4H20z"/></symbol>
+<symbol id="s-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.3a3 3 0 0 1 5.6 1.2c0 2-2.8 2.5-2.8 4"/><circle cx="12" cy="17.2" r="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="s-out" viewBox="0 0 24 24"><path d="M14 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8"/><path d="m17 15 4-3-4-3M21 12H10"/></symbol>
+<symbol id="s-bag" viewBox="0 0 24 24"><rect x="3.5" y="7.5" width="17" height="13" rx="2.5"/><path d="M8.5 7.5V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2.5M9.5 11.5v5M14.5 11.5v5"/></symbol>
+<symbol id="s-plane" viewBox="0 0 24 24"><path d="M10.5 12.5 3 10V7.6l2 .5 1.6 1.6 3.4.9L8.6 4.2l2-.6 4 5.4 4.6 1.2a1.9 1.9 0 0 1 0 3.6l-4.6 1.2-4 5.4-2-.6 1.4-6.4-3.4.9L5 15.9l-2 .5V14z"/></symbol>
+<symbol id="s-train" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="12.5" rx="3"/><path d="M5 10h14M8 20l-2 1M16 20l2 1M8.5 17.5h7"/><circle cx="9" cy="13" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r=".9" fill="currentColor" stroke="none"/></symbol>
+<symbol id="s-bus" viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="13.5" rx="2.5"/><path d="M4 11h16M7 20.5V17M17 20.5V17"/><circle cx="8" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="14" r="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="s-car" viewBox="0 0 24 24"><path d="M3.5 16v-3.4l1.9-4.4A2 2 0 0 1 7.2 7h9.6a2 2 0 0 1 1.8 1.2l1.9 4.4V16"/><path d="M3.5 12.6h17M5.5 16v2.5M18.5 16v2.5"/><circle cx="7.5" cy="15" r="1" fill="currentColor" stroke="none"/><circle cx="16.5" cy="15" r="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="s-taxi" viewBox="0 0 24 24"><path d="M3.5 16v-3.4l1.9-4.4A2 2 0 0 1 7.2 7h9.6a2 2 0 0 1 1.8 1.2l1.9 4.4V16"/><path d="M3.5 12.6h17M5.5 16v2.5M18.5 16v2.5M9.5 7V4.5h5V7"/></symbol>
+<symbol id="s-bike" viewBox="0 0 24 24"><circle cx="5.6" cy="17" r="3.4"/><circle cx="18.4" cy="17" r="3.4"/><path d="m5.6 17 4.2-7.6h4.6M14.4 9.4 18.4 17M9 17h4.4l3.2-9.6h2M8 7.4h3.4"/></symbol>
+<symbol id="s-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.6" r="1.9"/><path d="m10 21 2.2-5.4-2-2.2.9-4.4 3.3 1.6 1.2 2.6 2.4.9M10.2 10.6 7.6 12l-1.2 3M12.2 15.6 15 21"/></symbol>
+<symbol id="s-ticket" viewBox="0 0 24 24"><path d="M3.5 9V6.5a1 1 0 0 1 1-1h15a1 1 0 0 1 1 1V9a3 3 0 0 0 0 6v2.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1V15a3 3 0 0 0 0-6z"/><path d="M14 6.5v2M14 11v2M14 15.5v2"/></symbol>
+<symbol id="s-phone" viewBox="0 0 24 24"><path d="M5.2 3.8h3l1.6 4-2 1.4a11.5 11.5 0 0 0 5 5l1.4-2 4 1.6v3a1.8 1.8 0 0 1-2 1.8A16.2 16.2 0 0 1 3.4 5.8a1.8 1.8 0 0 1 1.8-2z"/></symbol>
+<symbol id="s-trash" viewBox="0 0 24 24"><path d="M4 6.5h16M9.5 6.5V4.2h5v2.3M6.5 6.5 7.4 20a1.6 1.6 0 0 0 1.6 1.5h6a1.6 1.6 0 0 0 1.6-1.5l.9-13.5M10 10.5v6.5M14 10.5v6.5"/></symbol>
+<symbol id="s-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4"/></symbol>
+<symbol id="s-wave" viewBox="0 0 24 24"><path d="M2 16c2 0 2.6-2 5-2s3 2 5 2 2.6-2 5-2 3 2 5 2M2 10c2 0 2.6-2 5-2s3 2 5 2 2.6-2 5-2 3 2 5 2"/></symbol>
+<symbol id="s-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.2 9.5h17.6M3.2 14.5h17.6M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/></symbol>
+</defs></svg>
+<div id="portal" class="hidden">
+<header class="topbar"><div class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#0E4C63"/><path d="M6 21c2.6-5.5 6-8.2 10-8.2s7.4 2.7 10 8.2" stroke="#E8A33D" stroke-width="2.1" fill="none" stroke-linecap="round"/><path d="M6 25.5c3.4-2.6 6.7-3.9 10-3.9s6.6 1.3 10 3.9" stroke="#59CFC9" stroke-width="2.1" fill="none" stroke-linecap="round"/><circle cx="16" cy="8.6" r="2.6" fill="#F4F6F5"/></svg><div class="brand-copy"><strong id="brand-apartment">Apartamentos Benidorm</strong><span>Mi estancia · concierge digital</span></div></div><select id="lang-select" class="lang" onchange="changeLang(this.value)"><option value="es">ES</option><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option></select></header>
+<div class="shell">
+<section class="hero"><div class="hero-content"><div class="eyebrow" id="hero-eyebrow">TU ESTANCIA</div><h1 id="hero-title">Hola</h1><p id="hero-subtitle"></p><div class="metric-line" id="hero-metric"><b id="hero-metric-value"></b><span id="hero-metric-label"></span></div><div class="hero-status" id="hero-status"></div></div></section>
+<main class="content">
+<details class="phase-card"><summary>Tu viaje · Your journey</summary><div class="spine-head" id="spine-head" data-i18n="spine_head">Tu viaje</div><div class="node" id="node-prearrival"><span class="node-dot"><svg class="ico-svg" aria-hidden="true"><use href="#s-check"/></svg></span><div class="node-title"><span id="node-prearrival-title"></span><span class="node-when" id="node-prearrival-when"></span></div><div class="node-body" id="node-prearrival-body"></div></div><div class="node" id="node-arrival"><span class="node-dot"><svg class="ico-svg" aria-hidden="true"><use href="#s-check"/></svg></span><div class="node-title"><span id="node-arrival-title"></span><span class="node-when" id="node-arrival-when"></span></div><div class="node-body" id="node-arrival-body"></div></div><div class="node" id="node-stay"><span class="node-dot"><svg class="ico-svg" aria-hidden="true"><use href="#s-check"/></svg></span><div class="node-title"><span id="node-stay-title"></span><span class="node-when" id="node-stay-when"></span></div><div class="node-body" id="node-stay-body"></div></div><div class="node" id="node-checkout"><span class="node-dot"><svg class="ico-svg" aria-hidden="true"><use href="#s-check"/></svg></span><div class="node-title"><span id="node-checkout-title"></span><span class="node-when" id="node-checkout-when"></span></div><div class="node-body" id="node-checkout-body"></div></div><div class="progress"><span id="phase-progress" style="width:20%"></span></div></details>
+<section id="view-home" class="screen active"></section>
+<section id="view-arrival" class="screen"></section>
+<section id="view-travel" class="screen"></section>
+<section id="view-move" class="screen"></section>
+<section id="view-apartment" class="screen"></section>
+<section id="view-help" class="screen"></section>
+<section id="view-checkout" class="screen"></section>
+</main>
+</div>
+<button id="security-close-stay" class="action secondary" onclick="securityCloseStay()">Cerrar acceso en este dispositivo</button>
+<nav class="bottom-nav" aria-label="Navegación de la estancia"><button class="nav-btn active" data-view="home" data-i18n-aria="nav_now" aria-label="Ahora" onclick="showView('home')"><svg class="ico-svg ico-lg" aria-hidden="true"><use href="#s-home"/></svg><b data-i18n="nav_now">Ahora</b></button><button class="nav-btn" data-view="travel" data-i18n-aria="nav_travel" aria-label="Llegar" onclick="showView('travel')"><svg class="ico-svg ico-lg" aria-hidden="true"><use href="#s-route"/></svg><b data-i18n="nav_travel">Llegar</b></button><button class="nav-btn" data-view="move" data-i18n-aria="nav_move" aria-label="Moverse" onclick="showView('move')"><svg class="ico-svg ico-lg" aria-hidden="true"><use href="#s-bus"/></svg><b data-i18n="nav_move">Moverse</b></button><button class="nav-btn" data-view="apartment" data-i18n-aria="nav_apartment" aria-label="Apartamento" onclick="showView('apartment')"><svg class="ico-svg ico-lg" aria-hidden="true"><use href="#s-book"/></svg><b data-i18n="nav_apartment">Apartamento</b></button><button class="nav-btn" data-view="help" data-i18n-aria="nav_help" aria-label="Ayuda" onclick="showView('help')"><svg class="ico-svg ico-lg" aria-hidden="true"><use href="#s-help"/></svg><b data-i18n="nav_help">Ayuda</b></button></nav>
+</div>
+<div id="detail" class="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title" aria-hidden="true" onclick="if(event.target===this)closeDetail()"><div class="detail-sheet" tabindex="-1"><button class="detail-close" data-i18n-aria="close" aria-label="Cerrar" onclick="closeDetail()">×</button><div id="detail-content"></div></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<input id="incident-photo" type="file" accept="image/jpeg,image/png" class="hidden" onchange="prepareIncidentPhoto(event)">
+<script src="environment.js"></script>
+<script>
+'use strict';
+const APP_VERSION='1.9.0-RC3.1-CORRECTIVE';
+const GUEST_WIRE_VERSION='1.9.0-guest-rc1';
+const GUEST_PROTOCOL='BND_GUEST_V1';
+const APPS_SCRIPT_URL=String(window.BND_ENV?.appsScriptUrl||'');
+const GUEST_SESSION_PREFIX='bnd_guest_session_';
+const GUEST_TOKEN_PREFIX='bnd_guest_token_';
+try{Object.keys(localStorage).filter(k=>k.startsWith(GUEST_TOKEN_PREFIX)).forEach(k=>localStorage.removeItem(k));}catch(_e){}
+const VALID_VIEWS=Object.freeze(['home','arrival','travel','move','apartment','help','checkout']);
+let lang=(navigator.language||'es').slice(0,2);
+if(!['es','en','fr','de'].includes(lang))lang='es';
+let reservationId='';
+let stayToken='';
+let guestSessionToken='';
+let snapshot=null;
+
+let initialView='home';
+let checkoutDraft={
+  checked:{},note:''
+};
+let refreshTimer=null;
+let modalReturnFocus=null;
+let incidentDraft={
+  type:'',photoBase64:'',photoMimeType:''
+};
+let beachRequestInFlight=false;
+let beachRetryTimer=null;
+let beachRetryAttempts=0;
+const T={
+  es:{
+    nav_travel:'Llegar',nav_move:'Moverse',spine_head:'Tu viaje',node_prearrival:'Preparativos',node_arrival:'Día de llegada',node_stay:'Vuestra estancia',node_checkout:'Salida',travel_in:'Llegar a Benidorm',travel_out:'Volver',travel_title_in:'Cómo llegar',travel_title_out:'Cómo volver',travel_lead_in:'Elige desde dónde vienes y te damos los pasos exactos hasta el portal.',travel_lead_out:'Consulta las instrucciones específicas para el regreso.',travel_origin:'¿Desde dónde vienes?',last_meters:'Los últimos metros',move_title:'Moverse por Benidorm',move_lead:'Casi todo está a pie. Para lo demás, el urbano pasa cerca del portal.',move_stop:'Tu parada',move_bus:'Autobús urbano',move_tram:'TRAM',move_taxi:'Taxi y bici',move_walk:'A pie desde el portal',move_schedules:'Ver horarios y líneas',travel_empty:'Aún no hay guías de transporte publicadas para este apartamento.',nav_now:'Ahora',nav_arrival:'Viaje',nav_apartment:'Apartamento',nav_help:'Ayuda',nav_requests:'Solicitudes',nav_checkout:'Salida',prepared:'Apartamento preparado',preparing:'Apartamento en preparación',checkin_done:'Check-in completado',checkin_pending:'Check-in pendiente',arrival_time:'Hora prevista',days_left:'días para tu llegada',route:'Abrir ruta',update_time:'Cambiar hora',confirm_entry:'Ya estamos dentro',wifi:'Wi‑Fi',copy:'Copiar',copied:'Copiado',essentials:'Esenciales cerca del apartamento',manual:'Manual del apartamento',locked:'Disponible cuando se habilite el acceso',incident_title:'¿Qué ocurre?',incident_desc:'Cuéntanos el problema. Recibiremos el aviso con la reserva y el apartamento.',description:'Descripción',add_photo:'Añadir foto',send_incident:'Enviar incidencia',request_title:'¿Qué necesitas?',request_desc:'Las solicitudes están sujetas a disponibilidad y confirmación.',detail:'Detalles opcionales',send_request:'Enviar solicitud',checkout_title:'Salida fácil',checkout_note:'Marca la lista cuando estés listo. No te pedimos tareas propias de limpieza.',checkout_confirm:'Ya hemos salido',checkout_message:'¿Hay algo que debamos revisar?',sent:'Enviado correctamente',loading:'Cargando…',stay_day:'Día de tu estancia',sensitive_locked:'Completa el check-in y espera a la ventana de acceso para ver esta información.',error_timeout:'Tiempo de espera agotado',loading_stay:'Preparando tu estancia…',error_title:'No pudimos abrir tu estancia',refresh:'Actualizar',loading_title:'Preparando tu estancia',loading_desc:'Estamos reuniendo la información exacta de tu reserva y apartamento.',retry:'Volver a intentar',today:'Hoy',close:'Cerrar'
+  },
+  en:{
+    nav_travel:'Getting here',nav_move:'Around',spine_head:'Your journey',node_prearrival:'Preparations',node_arrival:'Arrival day',node_stay:'Your stay',node_checkout:'Departure',travel_in:'To Benidorm',travel_out:'Going back',travel_title_in:'How to get here',travel_title_out:'How to get back',travel_lead_in:'Pick where you are coming from and we give you the exact steps to the door.',travel_lead_out:'Check the specific instructions for your return journey.',travel_origin:'Where are you coming from?',last_meters:'The last few metres',move_title:'Getting around Benidorm',move_lead:'Almost everything is walkable. For the rest, the city bus stops nearby.',move_stop:'Your stop',move_bus:'City bus',move_tram:'TRAM',move_taxi:'Taxi and bike',move_walk:'On foot from the door',move_schedules:'See routes and timetables',travel_empty:'No transport guides have been published for this apartment yet.',nav_now:'Now',nav_arrival:'Journey',nav_apartment:'Apartment',nav_help:'Help',nav_requests:'Requests',nav_checkout:'Checkout',prepared:'Apartment ready',preparing:'Apartment being prepared',checkin_done:'Online check-in complete',checkin_pending:'Online check-in pending',arrival_time:'Expected arrival',days_left:'days until arrival',route:'Open directions',update_time:'Change time',confirm_entry:'We are inside',wifi:'Wi‑Fi',copy:'Copy',copied:'Copied',essentials:'Essentials near the apartment',manual:'Apartment guide',locked:'Available when access is enabled',incident_title:'What happened?',incident_desc:'Tell us the issue. We receive the booking and apartment details automatically.',description:'Description',add_photo:'Add photo',send_incident:'Send issue',request_title:'What do you need?',request_desc:'Requests are subject to availability and confirmation.',detail:'Optional details',send_request:'Send request',checkout_title:'Easy checkout',checkout_note:'Tick the list when ready. We do not ask guests to perform cleaning tasks.',checkout_confirm:'We have left',checkout_message:'Is there anything we should check?',sent:'Sent successfully',loading:'Loading…',stay_day:'Day of your stay',sensitive_locked:'Complete online check-in and wait for the access window to see this information.',error_timeout:'Request timed out',loading_stay:'Preparing your stay…',error_title:'We could not open your stay',refresh:'Refresh',loading_title:'Preparing your stay',loading_desc:'We are gathering the exact information for your booking and apartment.',retry:'Try again',today:'Today',close:'Close'
+  },
+  fr:{
+    nav_travel:'Arriver',nav_move:'Se déplacer',spine_head:'Votre voyage',node_prearrival:'Préparatifs',node_arrival:'Jour d’arrivée',node_stay:'Votre séjour',node_checkout:'Départ',travel_in:'Vers Benidorm',travel_out:'Retour',travel_title_in:'Comment venir',travel_title_out:'Comment repartir',travel_lead_in:'Choisissez votre point de départ et nous vous donnons les étapes exactes jusqu’à la porte.',travel_lead_out:'Consultez les instructions spécifiques pour le retour.',travel_origin:'D’où venez-vous ?',last_meters:'Les derniers mètres',move_title:'Se déplacer à Benidorm',move_lead:'Presque tout se fait à pied. Pour le reste, le bus urbain passe tout près.',move_stop:'Votre arrêt',move_bus:'Bus urbain',move_tram:'TRAM',move_taxi:'Taxi et vélo',move_walk:'À pied depuis la porte',move_schedules:'Voir lignes et horaires',travel_empty:'Aucun guide de transport n’a encore été publié pour ce logement.',nav_now:'Maintenant',nav_arrival:'Voyage',nav_apartment:'Appartement',nav_help:'Aide',nav_requests:'Demandes',nav_checkout:'Départ',prepared:'Appartement prêt',preparing:'Appartement en préparation',checkin_done:'Check-in en ligne terminé',checkin_pending:'Check-in en ligne en attente',arrival_time:'Arrivée prévue',days_left:'jours avant votre arrivée',route:'Ouvrir l’itinéraire',update_time:'Modifier l’heure',confirm_entry:'Nous sommes entrés',wifi:'Wi‑Fi',copy:'Copier',copied:'Copié',essentials:'Essentiels près de l’appartement',manual:'Guide du logement',locked:'Disponible lorsque l’accès est activé',incident_title:'Que se passe-t-il ?',incident_desc:'Décrivez le problème. Nous recevons automatiquement la réservation et le logement.',description:'Description',add_photo:'Ajouter une photo',send_incident:'Envoyer le problème',request_title:'De quoi avez-vous besoin ?',request_desc:'Les demandes sont soumises à disponibilité et confirmation.',detail:'Détails facultatifs',send_request:'Envoyer la demande',checkout_title:'Départ facile',checkout_note:'Cochez la liste lorsque vous êtes prêt. Nous ne demandons pas de tâches de ménage.',checkout_confirm:'Nous sommes partis',checkout_message:'Y a-t-il quelque chose à vérifier ?',sent:'Envoyé',loading:'Chargement…',stay_day:'Jour de votre séjour',sensitive_locked:'Terminez le check-in et attendez la fenêtre d’accès.',error_timeout:'Délai dépassé',loading_stay:'Préparation de votre séjour…',error_title:'Impossible d’ouvrir votre séjour',refresh:'Actualiser',loading_title:'Préparation de votre séjour',loading_desc:'Nous rassemblons les informations exactes de votre réservation et de votre appartement.',retry:'Réessayer',today:'Aujourd’hui',close:'Fermer'
+  },
+  de:{
+    nav_travel:'Anreise',nav_move:'Unterwegs',spine_head:'Deine Reise',node_prearrival:'Vorbereitung',node_arrival:'Anreisetag',node_stay:'Dein Aufenthalt',node_checkout:'Abreise',travel_in:'Nach Benidorm',travel_out:'Zurück',travel_title_in:'So kommst du an',travel_title_out:'So reist du ab',travel_lead_in:'Wähle deinen Startpunkt und du bekommst die genauen Schritte bis zur Tür.',travel_lead_out:'Prüfe die konkreten Hinweise für deine Rückreise.',travel_origin:'Woher kommst du?',last_meters:'Die letzten Meter',move_title:'Unterwegs in Benidorm',move_lead:'Fast alles ist zu Fuß erreichbar. Für den Rest hält der Stadtbus ganz in der Nähe.',move_stop:'Deine Haltestelle',move_bus:'Stadtbus',move_tram:'TRAM',move_taxi:'Taxi und Fahrrad',move_walk:'Zu Fuß ab der Haustür',move_schedules:'Linien und Fahrpläne ansehen',travel_empty:'Für dieses Apartment sind noch keine Anreiseinfos veröffentlicht.',nav_now:'Jetzt',nav_arrival:'Reise',nav_apartment:'Wohnung',nav_help:'Hilfe',nav_requests:'Anfragen',nav_checkout:'Abreise',prepared:'Wohnung bereit',preparing:'Wohnung wird vorbereitet',checkin_done:'Online-Check-in abgeschlossen',checkin_pending:'Online-Check-in ausstehend',arrival_time:'Erwartete Ankunft',days_left:'Tage bis zur Anreise',route:'Route öffnen',update_time:'Uhrzeit ändern',confirm_entry:'Wir sind drin',wifi:'WLAN',copy:'Kopieren',copied:'Kopiert',essentials:'Wichtige Orte in der Nähe',manual:'Wohnungsanleitung',locked:'Verfügbar, sobald der Zugang freigeschaltet ist',incident_title:'Was ist passiert?',incident_desc:'Beschreibe das Problem. Buchung und Wohnung werden automatisch übermittelt.',description:'Beschreibung',add_photo:'Foto hinzufügen',send_incident:'Problem senden',request_title:'Was brauchst du?',request_desc:'Anfragen sind abhängig von Verfügbarkeit und Bestätigung.',detail:'Optionale Details',send_request:'Anfrage senden',checkout_title:'Einfacher Check-out',checkout_note:'Liste abhaken, wenn du bereit bist. Keine Reinigungsaufgaben für Gäste.',checkout_confirm:'Wir sind abgereist',checkout_message:'Gibt es etwas, das wir prüfen sollten?',sent:'Erfolgreich gesendet',loading:'Laden…',stay_day:'Tag deines Aufenthalts',sensitive_locked:'Online-Check-in abschließen und Zugangsfenster abwarten.',error_timeout:'Zeitüberschreitung',loading_stay:'Dein Aufenthalt wird vorbereitet…',error_title:'Dein Aufenthalt konnte nicht geöffnet werden',refresh:'Aktualisieren',loading_title:'Dein Aufenthalt wird vorbereitet',loading_desc:'Wir stellen die genauen Informationen zu deiner Buchung und Wohnung zusammen.',retry:'Erneut versuchen',today:'Heute',close:'Schließen'
+  }
+};
+// RC3: one recursive editorial contract, mirrored verbatim in the public renderer.
+function guestEditorialText_(value) {
+  return typeof value==='string' && /complet[ae]r? antes de publicar|añade (?:una foto|instrucciones)|confirma (?:en el editor|el horario)|pendiente de (?:revisar|confirmar|completar|configurar)|pending (?:confirmation|review|configuration)|before publishing|add exact directions|à confirmer|avant publication|noch zu bestätigen|vor veröffentlichung|\b(?:TODO|TBD)\b/i.test(value);
+}
+function guestEditorialBlock_(value) {
+  return value && typeof value==='object' && ['needsContent','draftOnly','editorialPending','placeholder'].some(function(k){return value[k]===true || value[k]==='true';});
+}
+function sanitizeGuestContent_(value) {
+  if(guestEditorialBlock_(value)) return null;
+  if(guestEditorialText_(value)) return null;
+  if(Array.isArray(value)) return value.map(sanitizeGuestContent_).filter(function(x){return x!==null;});
+  if(!value || typeof value!=='object') return value;
+  var clean={};Object.keys(value).forEach(function(k){
+    if(['needsContent','draftOnly','editorialPending','placeholder','reviewedBy','reviewedAt','sourceText','publicationValidation'].indexOf(k)>=0)return;
+    var v=sanitizeGuestContent_(value[k]);if(/(?:url|photoDay|photoNight)$/i.test(k)&&typeof v==='string'&&v&&!/^https:\/\/[^\s]+$/i.test(v))return;if(v!==null)clean[k]=v;
+  });return clean;
+}
+
+function tr(k){
+  return (T[lang]&&T[lang][k])||T.es[k]||k
+}function tx(v){
+  if(guestEditorialBlock_(v)||guestEditorialText_(v))return '';
+  if(v&&typeof v==='object'&&!Array.isArray(v)){const text=String(v[lang]||v.en||v.es||Object.values(v)[0]||'');return guestEditorialText_(text)?'':text;}
+  return String(v||'')
+}
+function esc(v){
+  return String(v??'').replace(/[&<>'"]/g,c=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
+  }[c]))
+}function attr(v){
+  return esc(v)
+}
+function safeUrl(v){
+  const text=String(v||'').trim();
+  return /^https:\/\//i.test(text)&&!/[\u0000-\u001F\u007F]/.test(text)?text:''
+}
+function applyStaticTranslations(){
+  document.documentElement.lang=lang;
+  const map={
+    'loading-title':'loading_title','loading-message':'loading_desc','error-title':'error_title','retry-button':'retry'
+  };
+  Object.keys(map).forEach(id=>{
+    const el=document.getElementById(id);if(el)el.textContent=tr(map[id])
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',tr(el.dataset.i18nAria)))
+}
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t=setTimeout(()=>el.classList.remove('show'),2600)
+}
+function randomId(bytes=18){
+  try{
+    const a=new Uint8Array(bytes);
+    crypto.getRandomValues(a);
+    return Array.from(a,x=>x.toString(16).padStart(2,'0')).join('')
+  }catch(e){
+    return Date.now()+'_'+Math.random().toString(36).slice(2)
+  }
+}
+let bridgeFrame=null,bridgeWindow=null,bridgeOrigin='',bridgeChannel='',bridgeReady=null,bridgeResolve=null,bridgeReject=null;
+const bridgePending=new Map();
+function isBridgeOrigin(o){
+  return o==='https://script.google.com'||o==='https://script.googleusercontent.com'||/^https:\/\/[A-Za-z0-9-]+-script\.googleusercontent\.com$/.test(o)
+}
+window.addEventListener('message',event=>{
+  const m=event.data||{};if(!isBridgeOrigin(event.origin))return;if(m.type==='BND_GUEST_READY'){
+    if(m.channel!==bridgeChannel)return;
+    /* RC17 · GitHub Pages sirve tras CDN y el navegador del huésped cachea: los
+   dos lados nunca cambian a la vez. El backend publica ahora las versiones de
+   cliente que admite; solo se corta cuando esta copia queda realmente fuera de
+   soporte, no por un simple desorden de despliegue. */
+    const compatible=m.version===GUEST_WIRE_VERSION||(Array.isArray(m.accepted)&&m.accepted.indexOf(GUEST_WIRE_VERSION)!==-1);
+    if(!compatible||m.protocol!==GUEST_PROTOCOL){
+      bridgeReject&&bridgeReject(Object.assign(new Error('La web y Apps Script no tienen la misma versión'),{
+        code:'WIRE_VERSION_MISMATCH'
+      }));return
+    }bridgeWindow=event.source;bridgeOrigin=event.origin;bridgeResolve&&bridgeResolve(true);return
+  }if(m.type!=='BND_GUEST_RESPONSE'||m.channel!==bridgeChannel||event.source!==bridgeWindow||event.origin!==bridgeOrigin)return;const p=bridgePending.get(String(m.requestId||''));if(!p)return;bridgePending.delete(m.requestId);clearTimeout(p.timer);p.resolve(m.payload)
+});
+/* RC17 · El puente vuelve a ser reintentable.
+   Antes, si el iframe no respondía en 20 s —cobertura móvil pobre, que es
+   justo cuando se usa esta pantalla—, bridgeReady quedaba como promesa
+   rechazada permanente y TODAS las llamadas posteriores devolvían el mismo
+   rechazo sin volver a intentarlo. El portal quedaba inservible hasta recargar,
+   y recargar era el otro callejón sin salida. Ahora cualquier fallo del
+   handshake desmonta el iframe y limpia el estado. */
+function resetBridge(){
+  try{
+    if(bridgeFrame&&bridgeFrame.parentNode)bridgeFrame.parentNode.removeChild(bridgeFrame)
+  }catch(e){}bridgeFrame=null;
+  bridgeWindow=null;
+  bridgeOrigin='';
+  bridgeChannel='';
+  bridgeReady=null;
+  bridgeResolve=null;
+  bridgeReject=null;
+  bridgePending.forEach(p=>{
+    clearTimeout(p.timer)
+  });
+  bridgePending.clear()
+}
+function ensureBridge(){
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(APPS_SCRIPT_URL))return Promise.reject(new Error('Falta configurar environment.js para este entorno')); 
+  if(bridgeWindow)return Promise.resolve(true);
+  if(bridgeReady)return bridgeReady;
+  bridgeChannel=randomId(24);
+  bridgeReady=new Promise((resolve,reject)=>{
+    bridgeResolve=resolve;bridgeReject=reject;setTimeout(()=>reject(Object.assign(new Error('No se pudo conectar con Apps Script'),{
+      code:'BRIDGE_UNAVAILABLE'
+    })),20000)
+  }).catch(err=>{
+    resetBridge();throw err
+  });
+  bridgeFrame=document.createElement('iframe');
+  bridgeFrame.style.cssText='position:fixed;width:1px;height:1px;left:-10000px;top:-10000px;border:0;opacity:0';
+  bridgeFrame.setAttribute('aria-hidden','true');
+  bridgeFrame.src=APPS_SCRIPT_URL+'?page=guestbridge&channel='+encodeURIComponent(bridgeChannel)+'&v='+encodeURIComponent(GUEST_WIRE_VERSION);
+  document.body.appendChild(bridgeFrame);
+  return bridgeReady
+}
+async function api(payload,timeout=25000){
+  if(previewMode)throw new Error(v19Text('Previsualización: acción desactivada','Preview: action disabled','Aperçu : action désactivée','Vorschau: Aktion deaktiviert'));
+
+  await ensureBridge();
+  const requestId=randomId();
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{
+      bridgePending.delete(requestId);reject(Object.assign(new Error(tr('error_timeout')),{
+        code:'RPC_TIMEOUT'
+      }))
+    },timeout);bridgePending.set(requestId,{
+      resolve,reject,timer
+    });bridgeWindow.postMessage({
+      type:'BND_GUEST_REQUEST',protocol:GUEST_PROTOCOL,channel:bridgeChannel,requestId,payload
+    },bridgeOrigin)
+  })
+}
+function sessionKey(){
+  return GUEST_SESSION_PREFIX+reservationId
+}function saveSession(v){
+  guestSessionToken=v;
+  try{
+    sessionStorage.setItem(sessionKey(),v)
+  }catch(e){}
+}function loadSession(){
+  try{
+    return sessionStorage.getItem(sessionKey())||''
+  }catch(e){
+    return''
+  }
+}
+// RC2: reusable link kept only for the lifetime of this tab.
+function tokenKey(){
+  return GUEST_TOKEN_PREFIX+reservationId
+}
+function saveStayToken(v){
+  const t=String(v||'').trim();
+  if(!t)return;
+  try{
+    sessionStorage.setItem(tokenKey(),t)
+  }catch(e){}
+}
+function loadStayToken(){
+  try{
+    return sessionStorage.getItem(tokenKey())||''
+  }catch(e){
+    return''
+  }
+}
+function forgetStay(){
+  try{
+    sessionStorage.removeItem(sessionKey())
+  }catch(e){}try{
+    sessionStorage.removeItem(tokenKey());localStorage.removeItem(tokenKey())
+  }catch(e){}guestSessionToken='';
+  stayToken=''
+}
+function cleanTokenUrl(){
+  try{
+    const view=VALID_VIEWS.includes(initialView)?initialView:'home';
+    history.replaceState(null,'',location.pathname+'?r='+encodeURIComponent(reservationId)+(view!=='home'?'&view='+encodeURIComponent(view):''))
+  }catch(e){}
+}
+const ERROR_COPY={
+  GUEST_LINK_EXPIRED:{
+    es:'El enlace ha caducado. Solicita al alojamiento un enlace nuevo.',en:'This link has expired. Ask the host for a new link.',fr:'Ce lien a expiré. Demandez un nouveau lien à l’hôte.',de:'Dieser Link ist abgelaufen. Bitte den Gastgeber um einen neuen Link.'
+  },GUEST_LINK_REVOKED:{
+    es:'Este enlace ya no está activo. Solicita al alojamiento el enlace más reciente.',en:'This link is no longer active. Ask the host for the latest link.',fr:'Ce lien n’est plus actif. Demandez le lien le plus récent à l’hôte.',de:'Dieser Link ist nicht mehr aktiv. Bitte den Gastgeber um den neuesten Link.'
+  },GUEST_LINK_USED:{
+    es:'Este enlace ya fue utilizado. Abre el portal desde el enlace más reciente.',en:'This link has already been used. Open the portal from the latest link.',fr:'Ce lien a déjà été utilisé. Ouvrez le portail depuis le lien le plus récent.',de:'Dieser Link wurde bereits verwendet. Öffne das Portal über den neuesten Link.'
+  },GUEST_SESSION_EXPIRED:{
+    es:'Tu sesión ha caducado. Abre de nuevo el enlace original.',en:'Your session has expired. Open the original link again.',fr:'Votre session a expiré. Ouvrez à nouveau le lien original.',de:'Deine Sitzung ist abgelaufen. Öffne den ursprünglichen Link erneut.'
+  },GUEST_SESSION_REVOKED:{
+    es:'Esta sesión ya no está activa. Abre de nuevo el enlace original.',en:'This session is no longer active. Open the original link again.',fr:'Cette session n’est plus active. Ouvrez à nouveau le lien original.',de:'Diese Sitzung ist nicht mehr aktiv. Öffne den ursprünglichen Link erneut.'
+  },GUEST_LINK_INVALID:{
+    es:'El enlace no es válido. Comprueba que lo has abierto completo.',en:'This link is invalid. Check that you opened the full link.',fr:'Ce lien n’est pas valide. Vérifiez le lien complet.',de:'Dieser Link ist ungültig. Bitte öffne den vollständigen Link.'
+  },RPC_TIMEOUT:{
+    es:'La conexión está tardando demasiado. Comprueba tu cobertura y vuelve a intentarlo.',en:'The connection is taking too long. Check your signal and try again.',fr:'La connexion est trop lente. Vérifiez le réseau et réessayez.',de:'Die Verbindung dauert zu lange. Prüfe den Empfang und versuche es erneut.'
+  },GUEST_TRANSPORT_INVALID:{
+    es:'Selecciona una forma de llegada válida.',en:'Select a valid arrival method.',fr:'Sélectionnez un mode d’arrivée valide.',de:'Wähle eine gültige Anreiseart.'
+  },GUEST_TRANSPORT_OPTION_INVALID:{
+    es:'Selecciona una opción válida para tu viaje.',en:'Select a valid option for your journey.',fr:'Sélectionnez une option valide pour votre voyage.',de:'Wähle eine gültige Option für deine Reise.'
+  },BUSY:{
+    es:'La información se está actualizando. Inténtalo de nuevo en unos segundos.',en:'The information is being updated. Try again in a few seconds.',fr:'Les informations sont en cours de mise à jour. Réessayez dans quelques secondes.',de:'Die Informationen werden aktualisiert. Versuche es in wenigen Sekunden erneut.'
+  }
+};
+function errorText(error){
+  const code=String(error&&error.code||'');
+  const item=ERROR_COPY[code];
+  if(item)return tx(item);
+  return tx({
+    es:'No pudimos abrir tu estancia. Comprueba la conexión o solicita un enlace nuevo.',en:'We could not open your stay. Check your connection or request a new link.',fr:'Impossible d’ouvrir votre séjour. Vérifiez la connexion ou demandez un nouveau lien.',de:'Dein Aufenthalt konnte nicht geöffnet werden. Prüfe die Verbindung oder fordere einen neuen Link an.'
+  })
+}
+/* RC17 · Caducar la sesion de 6 h a mitad de estancia deja de ser un corte.
+   Se recanjea en silencio con el token guardado y el huesped no se entera;
+   solo se muestra el error si el propio enlace ya no sirve. */
+async function recuperarSesion(errorOriginal){
+  try{
+    sessionStorage.removeItem(sessionKey())
+  }catch(_e){}guestSessionToken='';
+  const stored=loadStayToken();
+  if(!stored){
+    showError(errorOriginal);
+    return false
+  }
+  try{
+    await exchangeStay(stored);
+    renderAll();
+    scheduleRefresh();
+    return true
+  }
+  catch(e){
+    showError(e);
+    return false
+  }
+}
+function showLoading(){
+  document.getElementById('error-screen').classList.add('hidden');
+  document.getElementById('portal').classList.add('hidden');
+  document.getElementById('loading-screen').classList.remove('hidden')
+}
+/* RC17 · El reintento vuelve a ser un reintento.
+   Antes era location.reload() sobre una URL de la que cleanTokenUrl ya habia
+   borrado el token: no podia funcionar nunca en el escenario para el que
+   existe. Ahora desmonta el puente y reejecuta el arranque, que ya sabe
+   recuperar la estancia desde el token guardado. */
+let retryEnCurso=false;
+async function retryInit(){
+  if(retryEnCurso)return;
+  retryEnCurso=true;
+  const b=document.getElementById('retry-button');
+  if(b){
+    b.disabled=true;
+    b.textContent=tr('loading')
+  }try{
+    resetBridge();
+    clearInterval(refreshTimer);
+    await init()
+  }finally{
+    retryEnCurso=false;
+    if(b){
+      b.disabled=false;
+      b.textContent=tr('retry')
+    }
+  }
+}
+function showError(error){
+  clearInterval(refreshTimer);
+  applyStaticTranslations();
+  document.getElementById('loading-screen').classList.add('hidden');
+  document.getElementById('portal').classList.add('hidden');
+  document.getElementById('error-screen').classList.remove('hidden');
+  document.getElementById('error-title').textContent=tr('error_title');
+  document.getElementById('retry-button').textContent=tr('retry');
+  document.getElementById('error-message').textContent=typeof error==='string'?error:errorText(error)
+}
+/* RC17 · Un enlace caducado o revocado no debe dejar basura en el dispositivo:
+   si el servidor dice que el token ya no sirve, se olvida para que el próximo
+   intento no repita el mismo fallo. El resto de errores (red, timeout) NO
+   borran nada: son recuperables y el token sigue siendo válido. */
+const TOKEN_DEAD_CODES=['GUEST_LINK_EXPIRED','GUEST_LINK_REVOKED','GUEST_LINK_INVALID','GUEST_LINK_USED','GUEST_LINK_WINDOW_CLOSED'];
+async function exchangeStay(token){
+  const res=await api({
+    action:'exchangeStayToken',reservaId:reservationId,stayToken:token
+  },30000);
+  if(!res||!res.ok){
+    const err=Object.assign(new Error(res&&res.error||'Invalid link'),{
+      code:res&&res.code||'GUEST_LINK_INVALID'
+    });
+    if(TOKEN_DEAD_CODES.includes(err.code))forgetStay();
+    throw err
+  }saveSession(res.guestSessionToken);
+  saveStayToken(token);
+  stayToken=token;
+  snapshot=res.snapshot;
+  return res
+}
+async function init(){
+  const q=new URLSearchParams(location.search);
+  reservationId=String(q.get('r')||'').toUpperCase();
+  stayToken=String(q.get('t')||'');
+
+  if(q.get('preview')==='1'){showLoading();v19PreviewInit(q);return;}
+  initialView=VALID_VIEWS.includes(String(q.get('view')||''))?String(q.get('view')):'home';
+  if(stayToken){saveStayToken(stayToken);cleanTokenUrl();}
+  document.getElementById('lang-select').value=lang;
+  applyStaticTranslations();
+  showLoading();
+  if(!reservationId){
+    showError(Object.assign(new Error('Missing reservation'),{
+      code:'GUEST_LINK_INVALID'
+    }));
+    return
+  }
+  try{
+    if(stayToken){
+      await exchangeStay(stayToken);
+      cleanTokenUrl();
+      openPortal();
+      return
+    }
+    guestSessionToken=loadSession();
+    if(guestSessionToken){
+      try{
+        const res=await api({
+          action:'getStaySnapshot',guestSessionToken
+        },30000);
+        if(res&&res.ok){
+          snapshot=res;
+          openPortal();
+          return
+        }
+        throw Object.assign(new Error(res&&res.error||'Snapshot error'),{
+          code:res&&res.code||''
+        })
+      }
+      catch(sessionError){
+        // La sesión no sirve. Solo se intenta recanjear si el fallo es de sesión;
+        // un fallo de red debe propagarse tal cual para no ocultar el motivo real.
+        const code=String(sessionError&&sessionError.code||'');
+        if(!['GUEST_SESSION_EXPIRED','GUEST_SESSION_REVOKED','GUEST_SESSION_REQUIRED'].includes(code))throw sessionError;
+        try{
+          sessionStorage.removeItem(sessionKey())
+        }catch(_e){}
+        guestSessionToken=''
+      }
+    }
+    const stored=loadStayToken();
+    if(!stored)throw Object.assign(new Error('Session unavailable'),{
+      code:'GUEST_SESSION_EXPIRED'
+    });
+    await exchangeStay(stored);
+    cleanTokenUrl();
+    openPortal()
+  }
+  catch(e){
+    showError(e)
+  }
+}
+function openPortal(){
+  document.getElementById('loading-screen').classList.add('hidden');
+  document.getElementById('error-screen').classList.add('hidden');
+  document.getElementById('portal').classList.remove('hidden');
+  renderAll();
+  showView(initialView);
+  scheduleRefresh();
+  setTimeout(loadGuestWeather,0);
+  setTimeout(loadGuestBeach,0)
+}
+async function refreshSnapshot(){
+  if(previewMode||!guestSessionToken||document.hidden)return;
+  try{
+    const r=await api({
+      action:'getStaySnapshot',guestSessionToken
+    },30000);
+    if(!r||!r.ok){
+      const err=Object.assign(new Error(r&&r.error||'Snapshot error'),{
+        code:r&&r.code||''
+      });
+      if(['GUEST_SESSION_EXPIRED','GUEST_SESSION_REVOKED'].includes(err.code)){
+        await recuperarSesion(err)
+      }return
+    }snapshot=r;
+    renderAll();
+    scheduleRefresh();
+    setTimeout(loadGuestWeather,0);
+    setTimeout(loadGuestBeach,0)
+  }catch(e){
+    if(['GUEST_SESSION_EXPIRED','GUEST_SESSION_REVOKED'].includes(String(e&&e.code||''))){
+      await recuperarSesion(e)
+    }
+  }
+}
+/* RC17 · Cadencia de refresco proporcional a lo que puede cambiar.
+   RC16.1 refrescaba cada 75 s en 'prearrival', fase que empieza al confirmar
+   la reserva y puede durar semanas. Cada refresco son tres RPC y el proyecto
+   Apps Script dispone de 90 minutos de ejecucion al dia en cuenta gratuita:
+   dos pestanas abiertas agotaban la cuota de TODO el sistema (check-in legal
+   incluido) en media jornada.
+   Los 75 s se reservan ahora para la ventana en que la informacion cambia de
+   verdad: el dia de llegada, cerca de la hora prevista. Fuera de ella basta
+   con el refresco al volver a la pestana, que ya existe. */
+function refreshDelay(){
+  const phase=String(snapshot&&snapshot.phase||'');
+  if(['completed'].includes(phase))return 0;
+  if(phase==='prearrival')return 0;
+  if(phase==='arrival'){
+    const hora=String(snapshot&&snapshot.reservation&&snapshot.reservation.arrivalTime||'');
+    const m=hora.match(/^(\d{2}):(\d{2})$/);
+    if(m){
+      const prevista=new Date();
+      prevista.setHours(Number(m[1]),Number(m[2]),0,0);
+      const dif=Math.abs(prevista.getTime()-Date.now());
+      if(dif<=4*3600000)return 75000
+    }
+    return 600000
+  }
+  return 1800000
+}
+function scheduleRefresh(){
+  clearInterval(refreshTimer);
+  const delay=refreshDelay();
+  if(delay)refreshTimer=setInterval(refreshSnapshot,delay)
+}
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden)refreshSnapshot()
+});
+function changeLang(v){
+  captureCheckoutDraft();
+  lang=v;
+  applyStaticTranslations();
+  document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=tr(el.dataset.i18n));
+  renderAll()
+}
+function formatDate(v,opt={
+  day:'numeric',month:'short'
+}){
+  return new Intl.DateTimeFormat(lang,{
+    ...opt,timeZone:'Europe/Madrid'
+  }).format(new Date(v))
+}
+function madridDayKey(v){
+  const parts=new Intl.DateTimeFormat('en-CA',{
+    timeZone:'Europe/Madrid',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(new Date(v));
+  const o={};
+  parts.forEach(x=>o[x.type]=x.value);
+  return Date.UTC(Number(o.year),Number(o.month)-1,Number(o.day))
+}
+function daysBetween(a,b){
+  return Math.round((madridDayKey(b)-madridDayKey(a))/86400000)
+}
+function stayMetric(){
+  const r=snapshot.reservation,phase=String(snapshot.phase||'');
+  if(phase==='arrival')return{
+    value:tr('today'),label:tr('arrival_time')+': '+String(r.arrivalTime||r.checkinTime||'14:00')
+  };
+  if(phase==='stay'){
+    const day=Math.min(Number(r.nights||1),Math.max(1,daysBetween(r.entry,new Date())+1));
+    return{
+      value:day+' / '+Number(r.nights||1),label:tr('stay_day')
+    }
+  }if(phase==='checkout')return{
+    value:String(r.checkoutTime||'11:00'),label:tx({
+      es:'hora límite de salida',en:'checkout deadline',fr:'heure limite de départ',de:'Abreise bis'
+    })
+  };
+  if(phase==='completed')return{
+    value:'✓',label:tx({
+      es:'Estancia finalizada',en:'Stay completed',fr:'Séjour terminé',de:'Aufenthalt beendet'
+    })
+  };
+  return{
+    value:String(Math.max(0,daysBetween(new Date(),r.entry))),label:tr('days_left')
+  }
+}
+function phaseCopy(){
+  const p=snapshot.phase;
+  const map={
+    prearrival:['📅',tx({
+      es:'Prepara tu llegada',en:'Prepare your arrival',fr:'Préparez votre arrivée',de:'Anreise vorbereiten'
+    }),tx({
+      es:'Organiza el viaje, revisa la dirección y confirma tu hora.',en:'Plan your journey, check the address and confirm your time.',fr:'Organisez le voyage, vérifiez l’adresse et confirmez l’heure.',de:'Plane die Reise, prüfe die Adresse und bestätige die Uhrzeit.'
+    }),20],arrival:['🧭',tx({
+      es:'Hoy llegas a Benidorm',en:'You arrive in Benidorm today',fr:'Vous arrivez à Benidorm aujourd’hui',de:'Heute kommst du in Benidorm an'
+    }),tx({
+      es:'Te acompañamos paso a paso hasta la puerta.',en:'We guide you step by step to the door.',fr:'Nous vous guidons jusqu’à la porte.',de:'Wir begleiten dich Schritt für Schritt bis zur Tür.'
+    }),45],stay:['☀️',tr('stay_day'),tx({
+      es:'Información práctica del apartamento para estos días.',en:'Practical apartment information for your stay.',fr:'Informations pratiques de l’appartement pour votre séjour.',de:'Praktische Informationen zur Wohnung für deinen Aufenthalt.'
+    }),70],checkout:['🚪',tr('checkout_title'),tx({
+      es:'Prepara la salida y consulta cómo continuar tu viaje.',en:'Prepare checkout and check how to continue your journey.',fr:'Préparez le départ et consultez la suite de votre voyage.',de:'Bereite die Abreise vor und plane die Weiterreise.'
+    }),90],completed:['💙',tx({
+      es:'Gracias por tu estancia',en:'Thank you for staying',fr:'Merci pour votre séjour',de:'Danke für deinen Aufenthalt'
+    }),tx({
+      es:'Esperamos que hayas disfrutado Benidorm.',en:'We hope you enjoyed Benidorm.',fr:'Nous espérons que vous avez apprécié Benidorm.',de:'Wir hoffen, Benidorm hat dir gefallen.'
+    }),100]
+  };
+  return map[p]||map.stay
+}
+let weatherRequestInFlight=false;
+let weatherRetryTimer=null;
+let weatherRetryAttempts=0;
+function scheduleWeatherRetry(){
+  if(previewMode||!guestSessionToken||!snapshot||snapshot.phase==='completed'||weatherRetryTimer||weatherRetryAttempts>=4)return;
+  const delay=Math.min(8000,1500*Math.pow(2,weatherRetryAttempts++));
+  weatherRetryTimer=setTimeout(()=>{
+    weatherRetryTimer=null;loadGuestWeather()
+  },delay)
+}
+async function loadGuestWeather(){
+  if(previewMode||weatherRequestInFlight||!guestSessionToken||!snapshot||snapshot.phase==='completed')return;
+  weatherRequestInFlight=true;
+  try{
+    const r=await api({
+      action:'getGuestWeather',guestSessionToken
+    },45000);
+    if(r&&r.ok&&r.weather){
+      snapshot.weather=r.weather;
+      renderHome();
+      if(r.weather.status==='loading')scheduleWeatherRetry();
+      else weatherRetryAttempts=0
+    }
+  }catch(_e){
+    if(snapshot){
+      snapshot.weather={
+        ...(snapshot.weather||{}),enabled:true,status:'unavailable',days:[]
+      };
+      renderHome()
+    }
+  }finally{
+    weatherRequestInFlight=false
+  }
+}
+function scheduleBeachRetry(){
+  if(beachRetryTimer||beachRetryAttempts>=4)return;
+  const delays=[1500,3000,6000,8000],delay=delays[Math.min(beachRetryAttempts,delays.length-1)];
+  beachRetryAttempts++;
+  beachRetryTimer=setTimeout(()=>{
+    beachRetryTimer=null;loadGuestBeach()
+  },delay)
+}
+async function loadGuestBeach(){
+  const phase=String(snapshot&&snapshot.phase||'');
+  if(previewMode||beachRequestInFlight||!guestSessionToken||!snapshot||['prearrival','completed'].includes(phase))return;
+  beachRequestInFlight=true;
+  try{
+    const r=await api({
+      action:'getGuestBeach',guestSessionToken
+    },45000);
+    if(r&&r.ok&&r.beach){
+      snapshot.beach=r.beach;
+      renderHome();
+      if(r.beach.status==='loading')scheduleBeachRetry();
+      else beachRetryAttempts=0
+    }
+  }catch(_e){
+    if(snapshot){
+      snapshot.beach={
+        ...(snapshot.beach||{}),enabled:true,status:'unavailable',beaches:[]
+      };
+      renderHome()
+    }
+  }finally{
+    beachRequestInFlight=false
+  }
+}
+function apartmentDisplayName(){
+  const r=snapshot&&snapshot.reservation||{},a=snapshot&&snapshot.content&&snapshot.content.apartment||{};
+  const configured=tx(a.displayName).trim();
+  if(configured)return configured;
+  let alias=String(a.alias||r.apartment||'').replace(/^apartamento\s+/i,'').trim();
+  const address=String(a.address||'');
+  const match=address.match(/(?:,|\s)(\d+[A-Za-z]?)\b/);
+  const number=match?match[1]:'';
+  if(number&&!new RegExp('(?:^|\\s)'+number.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?:$|\\s)').test(alias))alias+=' '+number;
+  return tx({
+    es:'Apartamento '+alias,en:'Apartment '+alias,fr:'Appartement '+alias,de:'Wohnung '+alias
+  });
+}
+function apartmentAccessDetail(){
+  const a=snapshot&&snapshot.content&&snapshot.content.apartment||{};
+  return tx(a.accessDetail||a.floorAndDoor||'').trim()
+}
+function essentialMapsUrl(item){
+  const a=snapshot.content&&snapshot.content.apartment||{},address=String(a.address||snapshot.reservation.apartment||'Benidorm');
+  const exact=safeUrl(item&&item.url),apartmentMap=safeUrl(a.mapsUrl),genericMaps=/^https:\/\/maps\.google\.com\/?$/i.test(exact),needsSearch=!exact||exact===apartmentMap||genericMaps||item.needsContent===true;
+  if(!needsSearch)return exact;
+  const term=tx(item&&item.mapsQuery)||tx(item&&item.title)||String(item&&item.id||'servicios');
+  return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(term+' cerca de '+address);
+}
+function journeyPromptHtml(){
+  const j=snapshot.journey||{},guides=(snapshot.content.arrival&&snapshot.content.arrival.transportGuides)||[];
+  const guide=guides.find(x=>String(x.id||'')===String(j.transportId||'')),option=guide&&(guide.options||[]).find(x=>String(x.id||'')===String(j.optionId||''));
+  const title=guide?tx(guide.title):tx({
+    es:'¿Cómo vas a llegar a Benidorm?',en:'How will you get to Benidorm?',fr:'Comment allez-vous arriver à Benidorm ?',de:'Wie kommst du nach Benidorm?'
+  });
+  const body=guide?(option?tx(option.title):tx(guide.summary)):tx({
+    es:'Indícalo ahora para mostrarte las instrucciones y opciones de transporte adecuadas.',en:'Tell us now so we can show the right directions and transport options.',fr:'Indiquez-le maintenant pour afficher les bonnes indications et options.',de:'Teile es uns mit, damit wir passende Hinweise und Optionen zeigen.'
+  });
+  return `<div class="card journey-first"><div class="journey-head"><span class="ico" aria-hidden="true">${esc(guide&&guide.icon||'🧭')}</span><span style="flex:1"><b>${esc(title)}</b><p>${esc(body)}</p></span><button class="action ${guide?'secondary':'primary'}" style="width:auto" onclick="showView('arrival')">${guide?'✎':'→'} ${esc(guide?tx({es:'Cambiar',en:'Change',fr:'Modifier',de:'Ändern'}):tx({es:'Elegir',en:'Choose',fr:'Choisir',de:'Auswählen'}))}</button></div></div>`;
+}
+function departureGuideTitle(id){
+  const map={
+    airport:{
+      es:'Hacia el Aeropuerto de Alicante',en:'To Alicante Airport',fr:'Vers l’aéroport d’Alicante',de:'Zum Flughafen Alicante'
+    },ave:{
+      es:'Hacia Alicante Terminal / AVE',en:'To Alicante rail / high-speed station',fr:'Vers Alicante Terminal / AVE',de:'Zum Bahnhof Alicante / AVE'
+    },bus_station:{
+      es:'Hacia la Estación de Autobuses de Benidorm',en:'To Benidorm Bus Station',fr:'Vers la gare routière de Benidorm',de:'Zum Busbahnhof Benidorm'
+    },car:{
+      es:'Salida de Benidorm en coche',en:'Leaving Benidorm by car',fr:'Quitter Benidorm en voiture',de:'Abreise aus Benidorm mit dem Auto'
+    }
+  };
+  return tx(map[String(id||'')]||{
+    es:'Continúa tu viaje',en:'Continue your journey',fr:'Poursuivez votre voyage',de:'Reise fortsetzen'
+  })
+}
+function renderDepartureTravel(){
+  const guides=((snapshot.content.arrival&&snapshot.content.arrival.transportGuides)||[]).filter(g=>['airport','ave','bus_station','car'].includes(String(g.id||'')));
+  window._departureGuides=guides;
+  return `<div class="section-head"><div><h2>${esc(tx({es:'Organiza tu regreso',en:'Plan your return journey',fr:'Organisez votre retour',de:'Rückreise planen'}))}</h2><p>${esc(tx({es:'Consulta transportes, horarios oficiales y parkings antes de salir.',en:'Check transport, official schedules and parking before leaving.',fr:'Consultez transports, horaires officiels et parkings avant le départ.',de:'Prüfe Verkehrsmittel, offizielle Fahrpläne und Parkmöglichkeiten.'}))}</p></div></div><div class="guide-grid">${guides.map((g,i)=>`<button class="guide-card" onclick="openDepartureGuide(${i})"><span class="ico" aria-hidden="true">${esc(g.icon||'🧭')}</span><span><b>${esc(departureGuideTitle(g.id))}</b><span>${esc(tx({es:'Ver opciones y enlaces oficiales',en:'View options and official links',fr:'Voir les options et liens officiels',de:'Optionen und offizielle Links anzeigen'}))}</span></span></button>`).join('')}</div>`;
+}
+function renderAll(){
+  if(snapshot && snapshot.content) snapshot.content=sanitizeGuestContent_(snapshot.content)||{};
+  const close=document.getElementById('security-close-stay');if(close){close.hidden=previewMode;close.textContent=tx({es:'Cerrar acceso en este dispositivo',en:'Close access on this device',fr:'Fermer l’accès sur cet appareil',de:'Zugang auf diesem Gerät schließen'});}
+  if(!snapshot)return;
+  captureCheckoutDraft();
+  const r=snapshot.reservation,c=snapshot.content,s=snapshot.status,pc=phaseCopy();
+  const hero=safeUrl(c.apartment&&c.apartment.heroImage);
+  const accent=String(c.apartment&&c.apartment.accent||'').trim();
+  if(/^#[0-9a-f]{6}$/i.test(accent))document.documentElement.style.setProperty('--blue',accent);
+  document.querySelector('.hero').style.backgroundImage=hero?`linear-gradient(135deg,rgba(5,47,85,.83),rgba(0,119,182,.55)),url(${JSON.stringify(hero)})`:'';
+  document.querySelector('.hero').style.backgroundSize=hero?'cover':'';
+  document.querySelector('.hero').style.backgroundPosition=hero?'center':'';
+  const displayName=apartmentDisplayName();
+  document.getElementById('brand-apartment').textContent=displayName;
+  document.title=displayName+' · Mi estancia';
+  document.getElementById('hero-eyebrow').textContent=formatDate(r.entry,{
+    day:'numeric',month:'long'
+  })+' → '+formatDate(r.checkout,{
+    day:'numeric',month:'long'
+  });
+  document.getElementById('hero-title').textContent=(tx({
+    es:'Hola, ',en:'Hello, ',fr:'Bonjour, ',de:'Hallo, '
+  })+r.guestFirstName);
+  document.getElementById('hero-subtitle').textContent=tx(c.welcome&&c.welcome.subtitle)||tx(c.welcome&&c.welcome.title);
+  document.getElementById('hero-status').innerHTML='<span class="status-pill '+(s.prepared?'good':'')+'">'+ico(s.prepared?'s-check':'s-clock')+esc(tr(s.prepared?'prepared':'preparing'))+'</span>'+'<span class="status-pill">'+ico(s.checkinComplete?'s-check':'s-alert')+esc(tr(s.checkinComplete?'checkin_done':'checkin_pending'))+'</span>';
+  bodyFlag('phase',snapshot.phase||'prearrival');
+  const met=stayMetric();
+  document.getElementById('hero-metric-value').textContent=met.value;
+  document.getElementById('hero-metric-label').textContent=met.label;
+  document.getElementById('phase-progress').style.width=pc[3]+'%';
+  renderSpine();
+  renderHome();
+  renderArrival();
+  renderTravel();
+  renderMove();
+  renderApartment();
+  renderHelp();
+  renderCheckout();
+  document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=tr(el.dataset.i18n))
+}
+function showView(id){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  const target=document.getElementById('view-'+id);
+  if(!target)return;
+  target.classList.add('active');
+  bodyFlag('view',id);
+  document.querySelectorAll('.nav-btn').forEach(x=>x.classList.toggle('active',x.dataset.view===id));
+  scrollTo({
+    top:0,behavior:'smooth'
+  })
+}
+function bodyFlag(k,v){
+  const b=document.body;
+  if(b&&b.dataset)b.dataset[k]=String(v||'')
+}
+function ico(name,cls){
+  return '<svg class="ico-svg'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="#'+String(name).replace(/[^a-z0-9-]/gi,'')+'"/></svg>'
+}
+const SPINE_ORDER=['prearrival','arrival','stay','checkout'];
+function spineNodeContent(id){
+  const r=snapshot.reservation,c=snapshot.content||{},st=snapshot.status||{},phase=String(snapshot.phase||'');
+  const guides=(c.arrival&&Array.isArray(c.arrival.transportGuides)?c.arrival.transportGuides:[]).length;
+  if(id==='prearrival'){
+    const pending=!st.checkinComplete;
+    return{
+      when:formatDate(r.entry,{
+        day:'numeric',month:'short'
+      }),
+      note:tx({
+        es:'Registro de viajeros, cómo vais a llegar y la hora prevista.',en:'Traveller registration, how you will arrive and your expected time.',fr:'Enregistrement des voyageurs, votre trajet et l’heure prévue.',de:'Reisendenregistrierung, Anreiseweg und geplante Uhrzeit.'
+      }),
+      next:pending?{
+        icon:'s-ticket',title:tr('checkin_pending'),sub:tx({
+          es:'Lo pide la normativa y se hace en unos minutos',en:'Required by law and it only takes a few minutes',fr:'Exigé par la loi, cela prend quelques minutes',de:'Gesetzlich vorgeschrieben, dauert nur wenige Minuten'
+        }),act:"showView('help')"
+      }
+      :{
+        icon:'s-route',title:tr('travel_title_in'),sub:tx({
+          es:'Los pasos exactos hasta el portal',en:'The exact steps to the door',fr:'Les étapes exactes jusqu’à la porte',de:'Die genauen Schritte bis zur Tür'
+        }),act:"showView('travel')"
+      },
+      mini:[{
+        icon:'s-clock',label:tr('update_time'),act:'showArrivalTimeDialog()'
+      },
+      pending?{
+        icon:'s-route',label:tr('nav_travel'),act:"showView('travel')"
+      }
+      :{
+        icon:'s-book',label:tr('nav_apartment'),act:"showView('apartment')"
+      }]
+    };
+  }
+  if(id==='arrival'){
+    return{
+      when:formatDate(r.entry,{
+        day:'numeric',month:'short'
+      })+' · '+String(r.arrivalTime||r.checkinTime||'14:00'),
+      note:tx({
+        es:'Te esperamos en el portal para la entrega de llaves. Si el viaje se retrasa, avísanos desde aquí.',en:'We will meet you at the door for the key handover. If your journey is delayed, tell us from here.',fr:'Nous vous attendons à la porte pour la remise des clés. En cas de retard, prévenez-nous ici.',de:'Wir warten an der Haustür für die Schlüsselübergabe. Bei Verspätung sag uns hier Bescheid.'
+      }),
+      next:{
+        icon:'s-key',title:tx({
+          es:'Llegada paso a paso',en:'Arrival step by step',fr:'Arrivée étape par étape',de:'Ankunft Schritt für Schritt'
+        }),sub:tx({
+          es:'Ruta, portal y entrega de llaves',en:'Route, entrance and key handover',fr:'Itinéraire, entrée et remise des clés',de:'Route, Eingang und Schlüsselübergabe'
+        }),act:"showView('arrival')"
+      },
+      mini:[{
+        icon:'s-clock',label:tr('update_time'),act:'showArrivalTimeDialog()'
+      },
+      {
+        icon:'s-alert',label:tx({
+          es:'Voy con retraso',en:'Running late',fr:'Je suis en retard',de:'Ich verspäte mich'
+        }),act:'showDelayDialog()',urgent:phase==='arrival'
+      }]
+    };
+  }
+  if(id==='stay'){
+    return{
+      when:formatDate(r.entry,{
+        day:'numeric',month:'short'
+      })+' — '+formatDate(r.checkout,{
+        day:'numeric',month:'short'
+      }),
+      note:tx({
+        es:'Manual del apartamento, Wi-Fi, cómo moverse y ayuda cuando haga falta.',en:'Apartment manual, Wi-Fi, getting around and help whenever you need it.',fr:'Manuel du logement, Wi-Fi, déplacements et aide en cas de besoin.',de:'Apartment-Handbuch, WLAN, Mobilität und Hilfe, wann immer nötig.'
+      }),
+      next:{
+        icon:'s-wifi',title:tr('wifi'),sub:tx({
+          es:'Red, contraseña y manual del apartamento',en:'Network, password and apartment manual',fr:'Réseau, mot de passe et manuel du logement',de:'Netzwerk, Passwort und Apartment-Handbuch'
+        }),act:"showView('apartment')"
+      },
+      mini:[{
+        icon:'s-bus',label:tr('nav_move'),act:"showView('move')"
+      },
+      {
+        icon:'s-help',label:tr('nav_help'),act:"showView('help')"
+      }]
+    };
+  }
+  return{
+    when:formatDate(r.checkout,{
+      day:'numeric',month:'short'
+    })+' · '+String(r.checkoutTime||'11:00'),
+    note:tx({
+      es:'Lo que hay que dejar hecho antes de cerrar la puerta, y cómo volver.',en:'What to sort out before closing the door, and how to travel back.',fr:'Ce qu’il faut faire avant de fermer la porte, et comment repartir.',de:'Was vor dem Schließen der Tür zu tun ist und wie du zurückreist.'
+    }),
+    next:{
+      icon:'s-out',title:tx({
+        es:'Preparar la salida',en:'Prepare your departure',fr:'Préparer le départ',de:'Abreise vorbereiten'
+      }),sub:tx({
+        es:'Lista, llaves y transporte de vuelta',en:'Checklist, keys and transport back',fr:'Liste, clés et transport retour',de:'Liste, Schlüssel und Rückreise'
+      }),act:"showView('checkout')"
+    },
+    mini:[{
+      icon:'s-route',label:tr('travel_title_out'),act:'openReturnTravel()'
+    },(guides?null:{
+      icon:'s-help',label:tr('nav_help'),act:"showView('help')"
+    })].filter(Boolean)
+  };
+}
+function renderSpine(){
+  if(!snapshot)return;
+  const phase=String(snapshot.phase||'prearrival');
+  const pos=phase==='completed'?SPINE_ORDER.length:Math.max(0,SPINE_ORDER.indexOf(phase));
+  SPINE_ORDER.forEach((id,idx)=>{
+    const node=document.getElementById('node-'+id);if(!node)return;
+    node.className='node '+(idx<pos?'done':idx===pos?'now':'future');
+    document.getElementById('node-'+id+'-title').textContent=tr('node_'+id);
+    const d=spineNodeContent(id);
+    document.getElementById('node-'+id+'-when').textContent=d.when;
+    document.getElementById('node-'+id+'-body').innerHTML=
+    '<p class="node-note">'+esc(d.note)+'</p>'+
+    '<button class="next-action" onclick="'+attr(d.next.act)+'"><span class="next-ico">'+ico(d.next.icon,'ico-lg')+'</span>'+
+    '<span class="next-copy"><b>'+esc(d.next.title)+'</b><span>'+esc(d.next.sub)+'</span></span>'+ico('s-chev','next-chev')+'</button>'+
+    (d.mini.length?'<div class="mini-row">'+d.mini.map(m=>'<button class="mini-action'+(m.urgent?' urgent':'')+'" onclick="'+attr(m.act)+'">'+ico(m.icon)+esc(m.label)+'</button>').join('')+'</div>':'');
+  });
+}
+function openReturnTravel(){
+  travelDirection='out';
+  showView('travel')
+}
+let travelDirection='in',travelOrigin='';
+function setTravelDirection(v){
+  travelDirection=v==='out'?'out':'in';
+  renderTravel()
+}
+function setTravelOriginByIndex(i){
+  const g=travelGuides();
+  travelOrigin=String(g[i]&&g[i].id||'');
+  renderTravel()
+}
+function travelGuides(){
+  const c=snapshot&&snapshot.content||{};
+  return (c.arrival&&Array.isArray(c.arrival.transportGuides)?c.arrival.transportGuides:[]).filter(g=>g&&tx(g.title))
+}
+function travelIconFor(id){
+  const map={
+    car:'s-car',airport:'s-plane',plane:'s-plane',ave:'s-train',train:'s-train',tram:'s-train',bus:'s-bus',coach:'s-bus',taxi:'s-taxi'
+  };
+  const k=String(id||'').toLowerCase();
+  return map[k]||Object.keys(map).reduce((a,x)=>a||(k.indexOf(x)>=0?map[x]:''),'')||'s-route'
+}
+
+function renderMove(){
+  const el=document.getElementById('view-move');
+  if(!el||!snapshot)return;
+  const m=(snapshot.content&&snapshot.content.mobility)||{};
+  if(m.enabled===false){
+    el.innerHTML='<div class="page-head"><h1>'+esc(tr('move_title'))+'</h1><p>'+esc(tr('travel_empty'))+'</p></div>';
+    return
+  }
+  const stop=m.stop||{},lines=Array.isArray(stop.lines)?stop.lines:[];
+  const bus=Array.isArray(m.busLines)?m.busLines:[],tram=Array.isArray(m.tramLines)?m.tramLines:[],walk=Array.isArray(m.walk)?m.walk:[];
+  const rows=(arr,cls)=>arr.map(x=>'<div class="line-row"><span class="line-badge'+cls+'">'+esc(String(x.code||'').slice(0,6))+'</span><div><b>'+esc(tx(x.title))+'</b><span>'+esc(tx(x.detail))+'</span></div></div>').join('');
+  el.innerHTML=
+  '<div class="page-head"><h1>'+esc(tr('move_title'))+'</h1><p>'+esc(tr('move_lead'))+'</p></div>'+
+  (tx(stop.name)?'<div class="stop-card" style="margin-top:var(--s4)"><div class="label">'+esc(tr('move_stop'))+'</div><b>'+esc(tx(stop.name))+'</b>'+
+  (tx(stop.walkMinutes)?'<span>'+esc(tx(stop.walkMinutes))+'</span>':'')+
+  (lines.length?'<div class="stop-lines">'+lines.map(x=>'<span>'+esc(x)+'</span>').join('')+'</div>':'')+'</div>':'')+
+  (bus.length||tx(m.busHours)?'<div class="section-head"><h2>'+esc(tr('move_bus'))+'</h2><span>'+esc(tx(m.busOperator)||'')+'</span></div><div class="mobility-panel">'+
+  rows(bus,'')+
+  (tx(m.busHours)?'<div class="route-tip">'+ico('s-clock')+'<span>'+esc(tx(m.busHours))+'</span></div>':'')+
+  (safeUrl(m.busUrl)?'<a class="action secondary" style="margin:var(--s3) 0" href="'+attr(safeUrl(m.busUrl))+'" target="_blank" rel="noopener noreferrer">'+ico('s-ticket')+esc(tr('move_schedules'))+'</a>':'')+'</div>':'')+
+  (tram.length?'<div class="section-head"><h2>'+esc(tr('move_tram'))+'</h2></div><div class="mobility-panel">'+rows(tram,' tram')+
+  (tx(m.tramNote)?'<div class="route-tip">'+ico('s-info')+'<span>'+esc(tx(m.tramNote))+'</span></div>':'')+
+  (safeUrl(m.tramUrl)?'<a class="action secondary" style="margin:var(--s3) 0" href="'+attr(safeUrl(m.tramUrl))+'" target="_blank" rel="noopener noreferrer">'+ico('s-ticket')+esc(tr('move_schedules'))+'</a>':'')+'</div>':'')+
+  '<div class="section-head"><h2>'+esc(tr('move_taxi'))+'</h2></div><div class="help-list">'+
+  (tx((m.taxi||{}).title)?'<'+(String((m.taxi||{}).phone||'')?'a href="tel:'+attr(String(m.taxi.phone))+'"':'div')+' class="essential-card"><span class="ico">'+ico('s-taxi')+'</span><div><b>'+esc(tx(m.taxi.title))+'</b><span>'+esc(tx(m.taxi.detail))+'</span></div></'+(String((m.taxi||{}).phone||'')?'a':'div')+'>':'')+
+  (tx((m.bike||{}).title)?'<div class="essential-card"><span class="ico">'+ico('s-bike')+'</span><div><b>'+esc(tx(m.bike.title))+'</b><span>'+esc(tx(m.bike.detail))+'</span></div></div>':'')+
+  '</div>'+
+  (walk.length?'<div class="section-head"><h2>'+esc(tr('move_walk'))+'</h2></div><div class="walk-grid">'+
+  walk.slice(0,3).map(x=>'<div><b>'+esc(String(x.minutes||''))+'</b><span>'+esc(tx(x.title))+'</span></div>').join('')+'</div>':'');
+}
+function weatherKind(code){
+  const n=parseInt(String(code||'').replace(/\D/g,'').slice(0,2),10);
+  if(n===11)return['☀️','clear'];
+  if(n===12)return['🌤️','mostly_clear'];
+  if([13,17].includes(n))return['⛅','partly_cloudy'];
+  if(n>=14&&n<=16)return['☁️','cloudy'];
+  if(n>=23&&n<=26)return['🌦️','light_rain'];
+  if(n>=33&&n<=36)return['🌧️','rain'];
+  if((n>=43&&n<=56))return['🌨️','snow'];
+  if(n>=61&&n<=76)return['⛈️','storm'];
+  if(n===81||n===82)return['🌫️','fog'];
+  return['🌤️','variable'];
+}
+function weatherLabel(code,fallback){
+  const key=weatherKind(code)[1],copy={
+    clear:{
+      es:'Despejado',en:'Clear',fr:'Dégagé',de:'Klar'
+    },
+    mostly_clear:{
+      es:'Poco nuboso',en:'Mostly clear',fr:'Peu nuageux',de:'Leicht bewölkt'
+    },
+    partly_cloudy:{
+      es:'Intervalos nubosos',en:'Partly cloudy',fr:'Éclaircies',de:'Teilweise bewölkt'
+    },
+    cloudy:{
+      es:'Nuboso',en:'Cloudy',fr:'Nuageux',de:'Bewölkt'
+    },
+    light_rain:{
+      es:'Posible lluvia débil',en:'Possible light rain',fr:'Faible pluie possible',de:'Leichter Regen möglich'
+    },
+    rain:{
+      es:'Lluvia',en:'Rain',fr:'Pluie',de:'Regen'
+    },
+    snow:{
+      es:'Nieve',en:'Snow',fr:'Neige',de:'Schnee'
+    },
+    storm:{
+      es:'Tormenta',en:'Thunderstorms',fr:'Orages',de:'Gewitter'
+    },
+    fog:{
+      es:'Niebla',en:'Fog',fr:'Brouillard',de:'Nebel'
+    },
+    variable:{
+      es:String(fallback||'Tiempo variable'),en:'Variable weather',fr:'Temps variable',de:'Wechselhaft'
+    }
+  };
+  return tx(copy[key]||copy.variable)
+}
+function weatherAdvice(weather){
+  const days=(weather&&weather.days)||[];
+  if(!days.length)return'';
+  return'';
+}
+function renderWeatherSection(){
+  const w=snapshot.weather||{};
+  if(w.enabled===false||w.status==='hidden')return'';
+  const source=safeUrl(w.source&&w.source.url),sourceLabel=String(w.source&&w.source.attribution||'AEMET');
+  const title=tx({
+    es:'El tiempo durante tu estancia',en:'Weather during your stay',fr:'La météo pendant votre séjour',de:'Wetter während deines Aufenthalts'
+  });
+  const sourceHtml=source?`<div class="weather-source">${esc(tx({es:'Predicción oficial',en:'Official forecast',fr:'Prévision officielle',de:'Offizielle Vorhersage'}))}: <a href="${attr(source)}" target="_blank" rel="noopener noreferrer">${esc(sourceLabel)}</a></div>`:'';
+  if(w.status==='loading'){
+    return `<section class="weather-panel"><div class="weather-head"><div><h2>🌤️ ${esc(title)}</h2><p>${esc(w.location||'Benidorm')}</p></div></div><div class="weather-empty">${esc(tx({es:'Actualizando la predicción oficial…',en:'Updating the official forecast…',fr:'Mise à jour de la prévision officielle…',de:'Offizielle Vorhersage wird aktualisiert…'}))}</div>${sourceHtml}</section>`;
+  }
+  if(w.status==='not_yet_available'){
+    return `<section class="weather-panel"><div class="weather-head"><div><h2>🌤️ ${esc(title)}</h2><p>${esc(w.location||'Benidorm')}</p></div></div><div class="weather-empty">${esc(tx({es:'La predicción oficial aparecerá a partir del ',en:'The official forecast will appear from ',fr:'La prévision officielle apparaîtra à partir du ',de:'Die offizielle Vorhersage erscheint ab dem '}))}<strong>${esc(formatDate(w.availableFrom||snapshot.reservation.entry,{day:'numeric',month:'long'}))}</strong>. ${esc(tx({es:'AEMET publica un horizonte de siete días.',en:'AEMET publishes a seven-day horizon.',fr:'AEMET publie une prévision sur sept jours.',de:'AEMET veröffentlicht eine Sieben-Tage-Vorhersage.'}))}</div>${sourceHtml}</section>`;
+  }
+  if(w.status!=='available'||!(w.days||[]).length){
+    return `<section class="weather-panel"><div class="weather-head"><div><h2>🌤️ ${esc(title)}</h2><p>${esc(w.location||'Benidorm')}</p></div></div><div class="weather-empty">${esc(tx({es:'No hemos podido actualizar la predicción en este momento. Puedes consultarla directamente en AEMET.',en:'We could not update the forecast right now. You can check it directly on AEMET.',fr:'Impossible de mettre à jour la météo pour le moment. Consultez directement AEMET.',de:'Die Vorhersage konnte gerade nicht aktualisiert werden. Bitte direkt bei AEMET nachsehen.'}))}</div>${sourceHtml}</section>`;
+  }
+  const todayKey=new Intl.DateTimeFormat('en-CA',{
+    timeZone:'Europe/Madrid',year:'numeric',month:'2-digit',day:'2-digit'
+  }).format(new Date());
+  const cards=w.days.map(day=>{
+    const kind=weatherKind(day.code),today=day.date===todayKey;return `<article class="weather-day ${today?'today':''}"><div class="weather-date">${today?esc(tr('today')):esc(formatDate(day.date+'T12:00:00',{weekday:'short',day:'numeric',month:'short'}))}</div><div class="weather-icon" aria-hidden="true">${kind[0]}</div><div class="weather-description">${esc(weatherLabel(day.code,day.description))}</div><div class="weather-temp">${esc(Math.round(Number(day.tempMax||0)))}° <small>/ ${esc(Math.round(Number(day.tempMin||0)))}°</small></div><div class="weather-meta"><span>☔ ${esc(String(Math.round(Number(day.rainProbability||0))))}%</span>${day.uvMax!=null?`<span>UV ${esc(String(Math.round(Number(day.uvMax))))}</span>`:''}${day.windMax!=null?`<span>💨 ${esc(String(Math.round(Number(day.windMax))))} km/h</span>`:''}</div></article>`
+  }).join('');
+  const advice=weatherAdvice(w),partial=w.partial?`<div class="weather-empty">${esc(tx({es:'AEMET publica siete días. El resto de la estancia se completará automáticamente cuando entre en el horizonte de predicción.',en:'AEMET publishes seven days. The rest of your stay will appear automatically when it enters the forecast horizon.',fr:'AEMET publie sept jours. Le reste du séjour apparaîtra automatiquement lorsqu’il entrera dans l’horizon de prévision.',de:'AEMET veröffentlicht sieben Tage. Der restliche Aufenthalt erscheint automatisch, sobald er im Vorhersagezeitraum liegt.'}))}</div>`:'';
+  return `<section class="weather-panel"><div class="weather-head"><div><h2>🌤️ ${esc(title)}</h2><p>${esc(w.location||'Benidorm')} · ${esc(tx({es:'máxima / mínima',en:'high / low',fr:'maximale / minimale',de:'Höchst / Tiefst'}))}</p></div></div><div class="weather-strip" role="list" aria-label="${attr(title)}">${cards}</div>${advice?`<div class="weather-advice">${esc(advice)}</div>`:''}${partial}${sourceHtml}</section>`;
+}
+function beachText_(value){
+  return String(value||'').trim()||tx({
+    es:'Sin dato',en:'No data',fr:'Non disponible',de:'Keine Angabe'
+  })
+}
+function beachAdvice_(day){
+  const advice=[];
+  const uv=Number(day&&day.uvMax);
+  const waves=(String(day&&day.wavesMorning||'')+' '+String(day&&day.wavesAfternoon||'')).toLowerCase();
+  if(uv>=8)advice.push(tx({
+    es:'UV muy alto: usa protección, agua y evita las horas centrales.',en:'Very high UV: use sun protection, drink water and avoid midday hours.',fr:'UV très élevé : protection solaire, hydratation et évitez les heures centrales.',de:'Sehr hoher UV-Wert: Sonnenschutz, viel trinken und Mittagssonne meiden.'
+  }));
+  else if(uv>=6)advice.push(tx({
+    es:'UV alto: protege especialmente a niños y piel sensible.',en:'High UV: take extra care with children and sensitive skin.',fr:'UV élevé : protégez particulièrement les enfants et les peaux sensibles.',de:'Hoher UV-Wert: Kinder und empfindliche Haut besonders schützen.'
+  }));
+  if(/fuerte|strong|fort|stark/.test(waves))advice.push(tx({
+    es:'Oleaje fuerte previsto: extrema la precaución y respeta la bandera.',en:'Strong swell forecast: be extra careful and follow the beach flag.',fr:'Forte houle prévue : prudence renforcée et respectez le drapeau.',de:'Starker Wellengang erwartet: besonders vorsichtig sein und die Flagge beachten.'
+  }));
+  return advice.join(' ')
+}
+function renderBeachSection(){
+  const b=snapshot.beach||{},phase=String(snapshot.phase||'');
+  if(b.enabled===false||b.status==='hidden'||!['arrival','stay','checkout'].includes(phase))return'';
+  const title=tx({
+    es:'Playas de Benidorm hoy',en:'Benidorm beaches today',fr:'Plages de Benidorm aujourd’hui',de:'Benidorms Strände heute'
+  }),source=b.source||{};
+  const links=[safeUrl(source.webcamUrl)?`<a class="beach-link" href="${attr(safeUrl(source.webcamUrl))}" target="_blank" rel="noopener noreferrer">📹 ${esc(tx({es:'Webcam de Levante',en:'Levante webcam',fr:'Webcam de Levante',de:'Levante-Webcam'}))}</a>`:'',safeUrl(source.municipalUrl)?`<a class="beach-link" href="${attr(safeUrl(source.municipalUrl))}" target="_blank" rel="noopener noreferrer">🚩 ${esc(tx({es:'Playas y seguridad',en:'Beaches and safety',fr:'Plages et sécurité',de:'Strände und Sicherheit'}))}</a>`:''].filter(Boolean).join('');
+  if(b.status==='loading'||!b.status)return `<section class="beach-panel"><div class="beach-head"><div><h2>🏖️ ${esc(title)}</h2><p>${esc(tx({es:'Datos oficiales de Levante y Poniente',en:'Official Levante and Poniente data',fr:'Données officielles de Levante et Poniente',de:'Offizielle Daten für Levante und Poniente'}))}</p></div></div><div class="weather-empty">${esc(tx({es:'Actualizando el estado previsto de las playas…',en:'Updating the beach forecast…',fr:'Mise à jour des prévisions des plages…',de:'Strandvorhersage wird aktualisiert…'}))}</div><div class="beach-links">${links}</div></section>`;
+  if(b.status!=='available'||!(b.beaches||[]).length)return `<section class="beach-panel"><div class="beach-head"><div><h2>🏖️ ${esc(title)}</h2></div></div><div class="weather-empty">${esc(tx({es:'No se ha podido actualizar ahora. Consulta las fuentes oficiales antes de bajar.',en:'Could not update right now. Check the official sources before going to the beach.',fr:'Mise à jour impossible. Consultez les sources officielles avant d’aller à la plage.',de:'Aktualisierung derzeit nicht möglich. Bitte vor dem Strandbesuch die offiziellen Quellen prüfen.'}))}</div><div class="beach-links">${links}</div></section>`;
+  const cards=(b.beaches||[]).map(beach=>{
+    const d=beach.today||{},u=safeUrl(beach.publicUrl),advice=beachAdvice_(d);return `<article class="beach-card"><h3>🏝️ ${esc(beach.name||'')}</h3><div class="beach-primary"><div class="beach-water">${d.waterTemp!==null&&d.waterTemp!==undefined?esc(String(d.waterTemp))+'°':'—'}<span>${esc(tx({es:'agua',en:'water',fr:'eau',de:'Wasser'}))}</span></div><div><b>${esc(beachText_(d.skyMorning))}</b><div class="subtle">${esc(tx({es:'Mañana',en:'Morning',fr:'Matin',de:'Vormittag'}))} · ${esc(beachText_(d.skyAfternoon))} ${esc(tx({es:'por la tarde',en:'in the afternoon',fr:'l’après-midi',de:'am Nachmittag'}))}</div></div></div><div class="beach-metrics"><div class="beach-metric"><span>UV</span><b>${d.uvMax!==null&&d.uvMax!==undefined?esc(String(d.uvMax)):'—'}</b></div><div class="beach-metric"><span>${esc(tx({es:'Máxima',en:'Maximum',fr:'Maximum',de:'Maximum'}))}</span><b>${d.tempMax!==null&&d.tempMax!==undefined?esc(String(d.tempMax))+'°':'—'}</b></div><div class="beach-metric"><span>${esc(tx({es:'Oleaje',en:'Swell',fr:'Houle',de:'Wellengang'}))}</span><b>${esc(beachText_(d.wavesMorning))}</b></div><div class="beach-metric"><span>${esc(tx({es:'Viento',en:'Wind',fr:'Vent',de:'Wind'}))}</span><b>${esc(beachText_(d.windMorning))}</b></div></div>${advice?`<div class="beach-advice">☀️ ${esc(advice)}</div>`:''}${u?`<div class="beach-links"><a class="beach-link" href="${attr(u)}" target="_blank" rel="noopener noreferrer">AEMET ↗</a></div>`:''}</article>`
+  }).join('');
+  return `<section class="beach-panel"><div class="beach-head"><div><h2>🏖️ ${esc(title)}</h2><p>${esc(tx({es:'Predicción de hoy: cielo, viento, oleaje, agua e índice UV.',en:'Today’s forecast: sky, wind, swell, water and UV index.',fr:'Prévision du jour : ciel, vent, houle, eau et indice UV.',de:'Heutige Vorhersage: Himmel, Wind, Wellen, Wasser und UV-Index.'}))}</p></div></div><div class="beach-grid">${cards}</div><div class="beach-warning">🚩 ${esc(tx({es:'La bandera que veas en el puesto de socorrismo manda siempre sobre cualquier previsión. Si es amarilla, extrema la precaución; si es roja, no te bañes.',en:'The flag displayed by the lifeguards always takes priority over any forecast. Yellow means extra caution; red means do not swim.',fr:'Le drapeau du poste de secours prime toujours sur les prévisions. Jaune : prudence renforcée ; rouge : baignade interdite.',de:'Die Flagge am Rettungsposten hat immer Vorrang. Gelb bedeutet erhöhte Vorsicht; bei Rot nicht baden.'}))}</div><div class="beach-links">${links}</div><div class="beach-source">${esc(String(source.attribution||'AEMET · Agencia Estatal de Meteorología'))}</div></section>`
+}
+function renderHome(){
+  const r=snapshot.reservation,s=snapshot.status,c=snapshot.content,m=stayMetric(),phase=String(snapshot.phase||''),beforeArrival=['prearrival','arrival'].includes(phase);
+  const essentials=(c.essentials||[]).filter(x=>x&&String(tx(x.title)||'').trim());
+  const usefulItems=(c.useful&&Array.isArray(c.useful.items)?c.useful.items:[]).filter(x=>x&&(!x.audience||x.audience==='all'||x.audience===(snapshot.journey&&snapshot.journey.transportId)));
+  const a=c.apartment||{},address=String(a.address||''),accessDetail=apartmentAccessDetail();
+  const arrivalActions=beforeArrival?`<div class="actions"><button class="action secondary" onclick="showArrivalTimeDialog()">🕐 ${esc(tr('arrival_time'))}: ${esc(r.arrivalTime||r.checkinTime||'14:00')}</button><button class="action ${phase==='arrival'?'danger':'secondary'}" onclick="showDelayDialog()">⏰ ${esc(tx({es:'Mi viaje se retrasa',en:'My journey is delayed',fr:'Mon voyage est retardé',de:'Meine Reise verspätet sich'}))}</button></div>`:'';
+  const waste=c.waste||{},wasteEnabled=waste.enabled!==false;
+  const quicks=[
+  `<button class="quick" aria-label="${attr(tr('wifi'))}" onclick="showView('apartment')"><span aria-hidden="true">📶</span><b>${esc(tr('wifi'))}</b></button>`,
+  `<button class="quick" aria-label="${attr(tr('nav_apartment'))}" onclick="showView('apartment')"><span aria-hidden="true">🏠</span><b>${esc(tr('nav_apartment'))}</b></button>`,
+  wasteEnabled?`<button class="quick" aria-label="${attr(tx({es:'Basura y reciclaje',en:'Waste and recycling',fr:'Déchets et recyclage',de:'Müll und Recycling'}))}" onclick="openWasteGuide()"><span aria-hidden="true">🗑️</span><b>${esc(tx({es:'Basura',en:'Waste',fr:'Déchets',de:'Müll'}))}</b></button>`:'',
+  `<button class="quick" aria-label="${attr(tr('nav_help'))}" onclick="showView('help')"><span aria-hidden="true">🛎️</span><b>${esc(tr('nav_help'))}</b></button>`,
+  `<button class="quick" aria-label="${attr(tx({es:'Emergencias',en:'Emergencies',fr:'Urgences',de:'Notfälle'}))}" onclick="showSafetyGuide()"><span aria-hidden="true">🆘</span><b>${esc(tx({es:'Emergencias',en:'Emergencies',fr:'Urgences',de:'Notfälle'}))}</b></button>`,
+  `<button class="quick" aria-label="${attr(tr('nav_checkout'))}" onclick="showView('checkout')"><span aria-hidden="true">🚪</span><b>${esc(tr('nav_checkout'))}</b></button>`
+  ].filter(Boolean).join('');
+  document.getElementById('view-home').innerHTML=`
+    ${beforeArrival?journeyPromptHtml():''}
+    <div class="home-summary-stack">
+      <article class="card stay-overview-card"><div class="card-title"><h3>📅 ${esc(tx({es:'Duración de la estancia',en:'Length of stay',fr:'Durée du séjour',de:'Aufenthaltsdauer'}))}</h3><span class="badge good">${esc(String(Number(r.nights||0)))} ${esc(tx({es:'noches',en:'nights',fr:'nuits',de:'Nächte'}))}</span></div><div class="arrival-date">${esc(formatDate(r.entry,{weekday:'long',day:'numeric',month:'long'}))}</div><div class="metric-line"><div class="metric">${esc(m.value)}</div><div class="label">${esc(m.label)}</div></div><div class="stay-times"><div class="stay-time"><span>Check-in</span><strong>${esc(r.checkinTime||'14:00')}</strong></div><div class="stay-time"><span>Check-out</span><strong>${esc(r.checkoutTime||'11:00')}</strong></div></div>${arrivalActions}</article>
+      <article class="card"><div class="card-title"><h3>🏠 ${esc(s.prepared?tr('prepared'):tr('preparing'))}</h3><span class="badge ${s.prepared?'good':'wait'}">${s.prepared?'✓':'…'}</span></div><p class="subtle">${s.prepared?esc(tx({es:'Limpieza y verificación completadas.',en:'Cleaning and verification completed.',fr:'Ménage et vérification terminés.',de:'Reinigung und Kontrolle abgeschlossen.'})):esc(tx({es:'El estado se actualizará cuando finalice la preparación.',en:'The status will update when preparation is complete.',fr:'Le statut sera actualisé lorsque la préparation sera terminée.',de:'Der Status wird nach Abschluss der Vorbereitung aktualisiert.'}))}</p><div class="subtle">👥 ${esc(String(s.travellers||0))} ${esc(tx({es:'viajeros registrados',en:'registered guests',fr:'voyageurs enregistrés',de:'registrierte Gäste'}))}</div></article>
+    </div>
+    <div class="card" style="margin-top:15px"><div class="card-title"><h3>📍 ${esc(tx({es:'Dirección completa del apartamento',en:'Full apartment address',fr:'Adresse complète de l’appartement',de:'Vollständige Wohnungsadresse'}))}</h3></div><p style="margin:0 0 10px"><strong>${esc(apartmentDisplayName())}</strong><br>${esc(address||tx({es:'Consulta la dirección con recepción',en:'Ask reception for the address',fr:'Demandez l’adresse à la réception',de:'Adresse an der Rezeption erfragen'}))}${accessDetail?`<span class="address-detail">${esc(accessDetail)}</span>`:''}</p>${safeUrl(a.mapsUrl)?`<div class="actions"><button class="action secondary" onclick="openMaps()">📍 ${esc(tx({es:'Ver portal en el mapa',en:'View entrance on map',fr:'Voir l’entrée sur la carte',de:'Eingang auf Karte ansehen'}))}</button></div>`:''}</div>
+    ${renderWeatherSection()}
+    ${renderBeachSection()}
+    <div class="section-head"><div><h2>${esc(tx({es:'Durante tu estancia',en:'During your stay',fr:'Pendant votre séjour',de:'Während deines Aufenthalts'}))}</h2><p>${esc(tx({es:'Accesos directos sin repetir información.',en:'Direct access without repeated information.',fr:'Accès directs sans informations répétées.',de:'Direkter Zugriff ohne doppelte Informationen.'}))}</p></div></div>
+    <div class="quick-grid">${quicks}</div>
+    <div class="section-head"><div><h2>${esc(tr('essentials'))}</h2><p>${esc(tx({es:'Cada opción abre resultados alrededor del apartamento, no solo la dirección.',en:'Each option opens results around the apartment, not just the address.',fr:'Chaque option ouvre les résultats autour de l’appartement.',de:'Jede Option zeigt Ergebnisse rund um die Wohnung.'}))}</p></div></div><div class="essential-list">${essentials.map(x=>{const u=essentialMapsUrl(x);const body=`<span class="ico">${esc(x.icon||'📍')}</span><span><b>${esc(tx(x.title))}</b><span>${esc(tx(x.description))}${x.distance?' · '+esc(x.distance):''}</span><span class="maps-hint">Google Maps ↗</span></span>`;return `<a class="essential-card" href="${attr(u)}" target="_blank" rel="noopener noreferrer">${body}</a>`}).join('')}</div>${usefulItems.length?`<div class="card" style="margin-top:var(--s3)"><div class="card-title"><h3>ℹ️ ${esc(tx({es:'Información práctica',en:'Practical information',fr:'Informations pratiques',de:'Praktische Informationen'}))}</h3></div><p class="subtle">${esc(tx({es:'Servicios oficiales y datos útiles que pueden resolver una necesidad concreta durante el viaje.',en:'Official services and practical information for specific needs during your trip.',fr:'Services officiels et informations pratiques pour un besoin concret pendant le voyage.',de:'Offizielle Dienste und praktische Informationen für konkrete Fragen während der Reise.'}))}</p><div class="actions"><button class="action secondary" onclick="showUsefulGuide()">ℹ️ ${esc(tx(c.useful&&c.useful.title)||tx({es:'Abrir información práctica',en:'Open practical information',fr:'Ouvrir les informations pratiques',de:'Praktische Informationen öffnen'}))}</button></div></div>`:''}${phase==='completed'?`<div class="card" style="margin-top:var(--s3)"><div class="card-title"><h3>💙 ${esc(tx({es:'Gracias por vuestra estancia',en:'Thank you for your stay',fr:'Merci pour votre séjour',de:'Danke für euren Aufenthalt'}))}</h3></div><p class="subtle">${esc(tx({es:'Si creéis que habéis olvidado algo, escribidnos cuanto antes por el chat de Airbnb. Nos ayudará mucho que dejéis vuestra reseña desde Airbnb.',en:'If you think you left something behind, message us through Airbnb as soon as possible. Your Airbnb review would mean a lot to us.',fr:'Si vous pensez avoir oublié un objet, écrivez-nous rapidement via Airbnb. Votre avis Airbnb nous aidera beaucoup.',de:'Falls ihr etwas vergessen habt, schreibt uns bitte schnell über Airbnb. Über eure Airbnb-Bewertung würden wir uns sehr freuen.'}))}</p><div class="actions"><a class="action primary" href="https://www.airbnb.es/trips" target="_blank" rel="noopener noreferrer">⭐ ${esc(tx({es:'Abrir Airbnb y dejar una reseña',en:'Open Airbnb and leave a review',fr:'Ouvrir Airbnb et laisser un avis',de:'Airbnb öffnen und bewerten'}))}</a></div></div>`:''}`;
+  const primary=phase==='arrival'?v19Meeting():'';
+  if(primary)document.getElementById('view-home').insertAdjacentHTML('afterbegin',primary);
+}
+function renderArrival(){
+  const c=snapshot.content,s=snapshot.status,r=snapshot.reservation,arrival=c.arrival||{},handover=arrival.handover||{},backup=handover.backup||{},journey=snapshot.journey||{},phase=String(snapshot.phase||'');
+  if(['stay','checkout','completed'].includes(phase)){
+    document.getElementById('view-arrival').innerHTML=renderDepartureTravel();
+    return
+  }
+  const steps=(arrival.steps||[]).slice().sort((a,b)=>(a.order||0)-(b.order||0));
+  const guides=(arrival.transportGuides||[]).slice();
+  guides.sort((a,b)=>String(a.id||'')===String(journey.transportId||'')?-1:String(b.id||'')===String(journey.transportId||'')?1:0);
+  window._transportGuides=guides;
+  const entryDisabled=!s.canConfirmEntry&&!s.entered,entryNote=entryDisabled?`<div class="lock-note">🕐 ${esc(tx({es:'La confirmación se habilita el día de llegada.',en:'Entry confirmation is enabled on arrival day.',fr:'La confirmation est activée le jour de l’arrivée.',de:'Die Ankunftsbestätigung wird am Anreisetag aktiviert.'}))}</div>`:'';
+  const backupCard=backup.enabled===false?'':`<div class="backup-card"><h3>${esc(backup.icon||'🛟')} ${esc(tx(backup.title))}</h3><p>${esc(tx(backup.body))}</p></div>`;
+  const handoverCard=v19Meeting();
+  const guideCards=guides.map((g,i)=>`<button class="guide-card ${String(g.id||'')===String(journey.transportId||'')?'selected':''}" onclick="openTransportGuide(${i})"><span class="ico" aria-hidden="true">${esc(g.icon||'🧭')}</span><span><b>${esc(tx(g.title))}</b><span>${esc(tx(g.summary))}</span>${String(g.id||'')===String(journey.transportId||'')?`<span class="choice-pill">✓ ${esc(tx({es:'Seleccionado',en:'Selected',fr:'Sélectionné',de:'Ausgewählt'}))}</span>`:''}</span></button>`).join('');
+  document.getElementById('view-arrival').innerHTML=`<div class="section-head"><div><h2>${esc(tx({es:'¿Cómo vas a llegar a Benidorm?',en:'How will you get to Benidorm?',fr:'Comment allez-vous arriver à Benidorm ?',de:'Wie kommst du nach Benidorm?'}))}</h2><p>${esc(tx({es:'Elige coche, aeropuerto, AVE o autobús y después la opción concreta.',en:'Choose car, airport, rail or bus, then the exact option.',fr:'Choisissez voiture, aéroport, AVE ou bus, puis l’option précise.',de:'Wähle Auto, Flughafen, Bahn oder Bus und anschließend die genaue Option.'}))}</p></div></div><div class="guide-grid">${guideCards}</div>${handoverCard}<div class="delay-card"><h3>⏰ ${esc(tx({es:'¿Tu viaje se retrasa?',en:'Is your journey delayed?',fr:'Votre voyage est retardé ?',de:'Verspätet sich deine Reise?'}))}</h3><p class="subtle">${esc(tx({es:'Actualiza la hora para que podamos organizar la entrega personal de llaves.',en:'Update the time so we can organise the personal key handover.',fr:'Mettez l’heure à jour pour organiser la remise des clés.',de:'Aktualisiere die Uhrzeit für die persönliche Schlüsselübergabe.'}))}</p><div class="actions"><button class="action ${phase==='arrival'?'danger':'secondary'}" onclick="showDelayDialog()">⏰ ${esc(tx({es:'Mi viaje se retrasa',en:'My journey is delayed',fr:'Mon voyage est retardé',de:'Meine Reise verspätet sich'}))}</button></div></div><div class="section-head"><div><h2>${esc(tx({es:'Del portal a la puerta del apartamento',en:'From the entrance to the apartment door',fr:'Du portail à la porte de l’appartement',de:'Vom Eingang bis zur Wohnungstür'}))}</h2><p>${esc(tx(arrival.parking))}</p></div></div><div class="timeline">${steps.map((x,i)=>{const image=safeUrl(x.imageUrl),map=safeUrl(x.mapsUrl);return `<article class="step ${x.locked?'locked':''}"><div class="step-num">${esc(x.icon||String(i+1))}</div><div><h3>${esc(tx(x.title))}</h3><p>${esc(tx(x.body))}</p>${image?`<img loading="lazy" decoding="async" src="${attr(image)}" alt="${attr(tx(x.title))}">`:x.needsContent?`<div class="placeholder">📸 ${esc(tx({es:'Fotografía pendiente de añadir por el anfitrión',en:'Host photo pending',fr:'Photo à ajouter par l’hôte',de:'Foto des Gastgebers ausstehend'}))}</div>`:''}${x.locked?`<div class="lock-note">🔒 ${esc(tr('sensitive_locked'))}</div>`:''}${map?`<div class="actions"><a class="action secondary" href="${attr(map)}" target="_blank" rel="noopener noreferrer">📍 ${esc(tx({es:'Ver punto exacto',en:'View exact point',fr:'Voir le point exact',de:'Genauen Punkt ansehen'}))}</a></div>`:''}</div></article>`}).join('')}</div>${entryNote}<div class="actions"><button class="action success" onclick="confirmEntry()" ${(s.entered||entryDisabled)?'disabled':''}>${s.entered?'✓ '+esc(tx({es:'Entrada confirmada',en:'Entry confirmed',fr:'Entrée confirmée',de:'Ankunft bestätigt'})):'🏠 '+esc(tr('confirm_entry'))}</button></div>`;
+}
+function renderApartment(){
+  const c=snapshot.content,w=c.wifi||{},waste=c.waste||{};
+  const manual=(c.manual||[]).filter(x=>!x.needsContent&&String(x&&x.id||'')!=='recycling');
+  const wasteEnabled=waste.enabled!==false;
+  window._visibleManual=manual;
+  const wasteCard=wasteEnabled?`<div class="card waste-card" style="margin-top:13px"><div class="waste-location"><span class="ico" aria-hidden="true">${esc(waste.icon||'🗑️')}</span><span style="flex:1"><h3 style="margin:0 0 4px">${esc(tx(waste.title)||tx({es:'Basura y reciclaje',en:'Waste and recycling',fr:'Déchets et recyclage',de:'Müll und Recycling'}))}</h3><p class="subtle" style="margin:0">${esc(tx(waste.summary))}</p></span></div><div class="actions"><button class="action secondary" onclick="openWasteGuide()">🗺️ ${esc(tx({es:'Ver dónde tirar la basura',en:'See where to take rubbish',fr:'Voir où jeter les déchets',de:'Müllsammelstelle anzeigen'}))}</button></div></div>`:'';
+  document.getElementById('view-apartment').innerHTML=`<div class="section-head"><h2>${esc(tr('manual'))}</h2><p>${esc(snapshot.reservation.apartment)}</p></div><div class="card"><div class="card-title"><h3>📶 ${esc(tr('wifi'))}</h3>${w.locked?'<span class="badge lock">🔒</span>':'<span class="badge good">✓</span>'}</div>${w.locked?`<p class="subtle">${esc(tr('sensitive_locked'))}</p>`:`<div class="label">RED</div><div style="font-weight:850;margin:3px 0 12px">${esc(w.network||'—')}</div><div class="label">CLAVE</div><div style="display:flex;align-items:center;gap:10px"><div style="font-weight:850;word-break:break-all;flex:1">${esc(w.password||'—')}</div><button class="action secondary" style="width:auto" onclick="copyWifi()">${esc(tr('copy'))}</button></div>`}</div>${wasteCard}<div class="manual-grid" style="margin-top:13px">${manual.map((x,i)=>`<button class="manual-card" onclick="openVisibleManual(${i})"><div class="emoji">${esc(x.icon||'ℹ️')}</div><h3>${esc(tx(x.title))}</h3><p>${esc(tx(x.summary))}</p>${x.locked?'<span class="badge lock" style="margin-top:8px">🔒</span>':''}</button>`).join('')}</div>`;
+}
+function renderMyOperations(){
+  const items=(snapshot.myOperations&&snapshot.myOperations.incidents)||[];
+  if(!items.length)return'';
+  const title=tx({
+    es:'Mis incidencias',en:'My issues',fr:'Mes incidents',de:'Meine Meldungen'
+  });
+  return `<div class="section-head"><div><h2>${esc(title)}</h2><p>${esc(tx({es:'Consulta el estado sin tener que volver a contactar.',en:'Check the status without contacting us again.',fr:'Consultez le statut sans nous recontacter.',de:'Status prüfen, ohne erneut Kontakt aufzunehmen.'}))}</p></div></div><div class="operation-list">${items.map(x=>`<div class="operation-card"><span><b>${esc(x.type||x.id)}</b><span>${esc(x.detail||'')}</span></span><span class="badge ${['resuelta','cerrada'].includes(String(x.status||'').toLowerCase())?'good':'wait'}">${esc(x.status||'')}</span></div>`).join('')}</div>`
+}
+function renderHelp(){
+  const help=snapshot.content.help||{},types=help.types||[],whatsapp=String(help.whatsappPhone||'').trim(),whatsappDigits=whatsapp.replace(/\D/g,'');
+  const whatsappAction=whatsappDigits?`<a class="action primary" href="https://wa.me/${attr(whatsappDigits)}" target="_blank" rel="noopener noreferrer">💬 WhatsApp · ${esc(tx({es:'Ayuda inmediata',en:'Immediate help',fr:'Aide immédiate',de:'Soforthilfe'}))}</a>`:'';
+  document.getElementById('view-help').innerHTML=`${whatsappAction?`<div class="card"><div class="card-title"><h3>💬 ${esc(tx({es:'Contacto directo solo cuando lo necesites',en:'Direct contact only when needed',fr:'Contact direct uniquement si nécessaire',de:'Direkter Kontakt nur bei Bedarf'}))}</h3></div><p class="subtle">${esc(tx({es:'Para reducir esperas, consulta primero las soluciones guiadas. Si es urgente, escríbenos por WhatsApp.',en:'To reduce waiting time, check the guided solutions first. If urgent, message us on WhatsApp.',fr:'Pour réduire l’attente, consultez d’abord les solutions guidées. En cas d’urgence, écrivez-nous sur WhatsApp.',de:'Um Wartezeiten zu vermeiden, prüfe zuerst die geführten Lösungen. In dringenden Fällen schreibe uns per WhatsApp.'}))}</p><div class="actions">${whatsappAction}</div></div>`:''}<div class="card"><div class="card-title"><h3>🆘 ${esc(tx({es:'Seguridad y emergencias',en:'Safety and emergencies',fr:'Sécurité et urgences',de:'Sicherheit und Notfälle'}))}</h3></div><p class="subtle">${esc(tx(snapshot.content.safety&&snapshot.content.safety.intro))}</p><div class="actions"><button class="action danger" onclick="showSafetyGuide()">🧯 ${esc(tx({es:'Abrir información de emergencia',en:'Open emergency information',fr:'Ouvrir les informations d’urgence',de:'Notfallinformationen öffnen'}))}</button></div></div><div class="section-head"><div><h2>${esc(tr('incident_title'))}</h2><p>${esc(tr('incident_desc'))}</p></div></div><div class="help-list">${types.map((x,i)=>`<button class="help-btn ${x.severity==='urgent'?'urgent':''}" onclick="openIncidentFromIndex(${i})"><span class="ico" aria-hidden="true">${esc(x.icon||'💬')}</span><span><b>${esc(tx(x.title))}</b><span>${x.severity==='urgent'?esc(tx({es:'Atención prioritaria',en:'Priority assistance',fr:'Assistance prioritaire',de:'Priorisierte Hilfe'})):esc(tx({es:'Te ayudamos a resolverlo',en:'We help you solve it',fr:'Nous vous aidons',de:'Wir helfen dir'}))}</span></span></button>`).join('')}</div>${renderMyOperations()}`;
+}
+function captureCheckoutDraft(){
+  const note=document.getElementById('checkout-note');
+  if(note)checkoutDraft.note=note.value;
+  document.querySelectorAll('.checkout-check').forEach(x=>checkoutDraft.checked[String(x.dataset.id||'')]=x.checked)
+}
+function renderCheckout(){
+  const c=snapshot.content.checkout||{},s=snapshot.status;
+  const unavailable=!s.canConfirmCheckout&&!s.checkedOut;
+  const note=unavailable?`<div class="lock-note">🕐 ${esc(tx({es:'El botón se habilita cerca de la hora de salida.',en:'The button is enabled close to checkout time.',fr:'Le bouton sera activé près de l’heure de départ.',de:'Die Schaltfläche wird kurz vor der Abreise aktiviert.'}))}</div>`:'';
+  document.getElementById('view-checkout').innerHTML=`<div class="section-head"><div><h2>${esc(tx(c.title)||tr('checkout_title'))}</h2><p>${esc(tr('checkout_note'))}</p></div></div><div class="checkout-list">${(c.items||[]).map((x,i)=>{const id=String(x.id||i);return `<label class="check-row"><input type="checkbox" class="checkout-check" data-id="${attr(id)}" ${checkoutDraft.checked[id]?'checked':''}><span>${esc(x.icon||'✓')} ${esc(tx(x.title))}</span></label>`}).join('')}</div><div class="card departure-card"><div class="card-title"><h3>🧭 ${esc(tx({es:'Continúa tu viaje',en:'Continue your journey',fr:'Poursuivez votre voyage',de:'Reise fortsetzen'}))}</h3></div><p class="subtle">${esc(tx({es:'Consulta cómo volver al aeropuerto, AVE, estación de autobuses o salir en coche.',en:'Check how to reach the airport, rail station, bus station or leave by car.',fr:'Consultez le trajet vers l’aéroport, l’AVE, la gare routière ou en voiture.',de:'Prüfe den Weg zum Flughafen, Bahnhof, Busbahnhof oder mit dem Auto.'}))}</p><div class="actions"><button class="action secondary" onclick="showView('arrival')">🧭 ${esc(tx({es:'Ver transportes de salida',en:'View return transport',fr:'Voir les transports de retour',de:'Verkehrsmittel für die Rückreise'}))}</button></div></div><div class="card" style="margin-top:13px"><p class="subtle">${esc(tx(c.luggage))}</p><div class="field"><label>${esc(tr('checkout_message'))}</label><textarea id="checkout-note" maxlength="500">${esc(checkoutDraft.note)}</textarea></div>${note}<div class="actions"><button class="action success" onclick="confirmCheckout()" ${(s.checkedOut||unavailable)?'disabled':''}>${s.checkedOut?'✓ '+esc(tx({es:'Salida confirmada',en:'Checkout confirmed',fr:'Départ confirmé',de:'Abreise bestätigt'})):'🚪 '+esc(tr('checkout_confirm'))}</button></div></div>`
+}
+function openMaps(){
+  const u=safeUrl(snapshot.content.apartment&&snapshot.content.apartment.mapsUrl);
+  if(u)open(u,'_blank','noopener,noreferrer')
+}function copyWifi(){
+  const w=snapshot&&snapshot.content&&snapshot.content.wifi||{},password=String(w.password||'');
+  if(!password){
+    toast(tx({
+      es:'La clave Wi‑Fi todavía no está disponible.',en:'The Wi‑Fi password is not available yet.',fr:'Le mot de passe Wi‑Fi n’est pas encore disponible.',de:'Das WLAN-Passwort ist noch nicht verfügbar.'
+    }));
+    return
+  }navigator.clipboard.writeText(password).then(()=>toast(tr('copied'))).catch(()=>toast(password))
+}
+function openTransportGuide(index){
+  const guides=window._transportGuides||(snapshot.content.arrival&&snapshot.content.arrival.transportGuides)||[],g=guides[Number(index)];
+  if(!g)return;
+  window._activeTransportGuideIndex=Number(index);
+  const journey=snapshot.journey||{};
+  const options=(g.options||[]).map((o,optionIndex)=>{
+    const u=safeUrl(o.url),selected=String(g.id||'')===String(journey.transportId||'')&&String(o.id||'')===String(journey.optionId||'');return `<div class="transport-option"><span style="font-size:25px" aria-hidden="true">${esc(o.icon||'🧳')}</span><span style="flex:1"><strong>${esc(tx(o.title))}</strong><p>${esc(tx(o.body))}</p><div class="actions">${u?`<a class="action secondary" href="${attr(u)}" target="_blank" rel="noopener noreferrer">↗ ${esc(tx({es:'Abrir información oficial',en:'Open official information',fr:'Ouvrir les informations officielles',de:'Offizielle Informationen öffnen'}))}</a>`:''}<button class="action ${selected?'success':'primary'}" onclick="saveJourneyChoiceByIndex(${Number(index)},${Number(optionIndex)})">${selected?'✓ '+esc(tx({es:'Seleccionado',en:'Selected',fr:'Sélectionné',de:'Ausgewählt'})):'🧳 '+esc(tx({es:'Este es mi viaje',en:'This is my journey',fr:'C’est mon voyage',de:'Das ist meine Reise'}))}</button></div></span></div>`
+  }).join('');
+  document.getElementById('detail-content').innerHTML=`<div style="font-size:42px">${esc(g.icon||'🧳')}</div><h2 id="detail-title">${esc(tx(g.title))}</h2><p>${esc(tx(g.summary))}</p><div class="actions"><button class="action ${String(g.id||'')===String(journey.transportId||'')?'success':'primary'}" onclick="saveJourneyChoiceByIndex(${Number(index)},-1)">${String(g.id||'')===String(journey.transportId||'')?'✓ '+esc(tx({es:'Viaje seleccionado',en:'Journey selected',fr:'Voyage sélectionné',de:'Reise ausgewählt'})):'🧳 '+esc(tx({es:'Seleccionar este origen',en:'Select this origin',fr:'Sélectionner cette origine',de:'Diesen Ausgangspunkt wählen'}))}</button></div><div class="transport-options">${options}</div>`;
+  openDetailA11y()
+}
+function openDepartureGuide(index){
+  const guides=window._departureGuides||[],g=guides[Number(index)];
+  if(!g)return;
+  const options=(g.options||[]).map(o=>{
+    const u=safeUrl(o.url);return `<div class="transport-option"><span style="font-size:25px" aria-hidden="true">${esc(o.icon||'🧭')}</span><span style="flex:1"><strong>${esc(tx(o.title))}</strong><p>${esc(tx(o.departureBody)||tx({es:'Consulta horarios, disponibilidad y margen recomendado antes de salir del apartamento.',en:'Check schedules, availability and recommended timing before leaving the apartment.',fr:'Consultez les horaires, la disponibilité et la marge recommandée avant le départ.',de:'Prüfe Fahrpläne, Verfügbarkeit und den empfohlenen Zeitpuffer vor der Abreise.'}))}</p>${u?`<div class="actions"><a class="action secondary" href="${attr(u)}" target="_blank" rel="noopener noreferrer">↗ ${esc(tx({es:'Abrir información oficial',en:'Open official information',fr:'Ouvrir les informations officielles',de:'Offizielle Informationen öffnen'}))}</a></div>`:''}</span></div>`
+  }).join('');
+  document.getElementById('detail-content').innerHTML=`<div style="font-size:42px">${esc(g.icon||'🧭')}</div><h2 id="detail-title">${esc(departureGuideTitle(g.id))}</h2><p>${esc(tx({es:'Planifica el trayecto y comprueba siempre los horarios oficiales.',en:'Plan the route and always check official schedules.',fr:'Planifiez le trajet et vérifiez toujours les horaires officiels.',de:'Plane die Strecke und prüfe stets die offiziellen Fahrpläne.'}))}</p><div class="transport-options">${options}</div>`;
+  openDetailA11y()
+}
+function saveJourneyChoiceByIndex(guideIndex,optionIndex){
+  const guides=window._transportGuides||(snapshot.content.arrival&&snapshot.content.arrival.transportGuides)||[],g=guides[Number(guideIndex)];
+  if(!g)return;
+  const option=Number(optionIndex)>=0?(g.options||[])[Number(optionIndex)]:null;
+  return saveJourneyChoice(String(g.id||''),String(option&&option.id||''))
+}
+async function saveJourneyChoice(transportId,optionId){
+  try{
+    const r=await api({
+      action:'saveGuestJourney',guestSessionToken,transportId,optionId
+    },30000);
+    if(!r||!r.ok)throw Object.assign(new Error(r&&r.error||'Error'),{
+      code:r&&r.code||''
+    });
+    snapshot=r.snapshot;
+    closeDetail();
+    renderAll();
+    toast(tx({
+      es:'Viaje guardado. La información ya está personalizada.',en:'Journey saved. Your information is now personalised.',fr:'Voyage enregistré. Les informations sont maintenant personnalisées.',de:'Reise gespeichert. Die Informationen sind jetzt personalisiert.'
+    }))
+  }catch(e){
+    toast(errorText(e))
+  }
+}
+function showDelayDialog(){
+  const j=snapshot.journey||{};
+  document.getElementById('detail-content').innerHTML=`<h2 id="detail-title">⏰ ${esc(tx({es:'Mi viaje se retrasa',en:'My journey is delayed',fr:'Mon voyage est retardé',de:'Meine Reise verspätet sich'}))}</h2><p>${esc(tx({es:'Actualiza la hora y añade una nota breve. El equipo recibirá un aviso inmediato.',en:'Update the time and add a short note. The team will be notified immediately.',fr:'Mettez à jour l’heure et ajoutez une courte note. L’équipe sera avertie immédiatement.',de:'Aktualisiere die Uhrzeit und füge eine kurze Notiz hinzu. Das Team wird sofort informiert.'}))}</p><div class="form"><div class="field"><label>${esc(tr('arrival_time'))}</label><input id="delay-time-input" type="time" value="${attr(snapshot.reservation.arrivalTime||'14:00')}"></div><div class="field"><label>${esc(tx({es:'Motivo o información útil',en:'Reason or useful information',fr:'Motif ou information utile',de:'Grund oder nützliche Information'}))}</label><textarea id="delay-note-input" maxlength="500" placeholder="${attr(tx({es:'Ej.: el vuelo llega con 45 minutos de retraso',en:'E.g. the flight is 45 minutes late',fr:'Ex. le vol a 45 minutes de retard',de:'Z. B. der Flug hat 45 Minuten Verspätung'}))}">${esc(j.delayNote||'')}</textarea></div><button class="action danger" onclick="sendTravelDelay()">⏰ ${esc(tx({es:'Avisar del retraso',en:'Report delay',fr:'Signaler le retard',de:'Verspätung melden'}))}</button></div>`;
+  openDetailA11y()
+}
+async function sendTravelDelay(){
+  const arrivalTime=document.getElementById('delay-time-input').value,note=document.getElementById('delay-note-input').value.trim(),j=snapshot.journey||{};
+  try{
+    const r=await api({
+      action:'reportGuestTravelDelay',guestSessionToken,arrivalTime,note,transportId:j.transportId||'',optionId:j.optionId||''
+    },30000);
+    if(!r||!r.ok)throw Object.assign(new Error(r&&r.error||'Error'),{
+      code:r&&r.code||''
+    });
+    snapshot=r.snapshot;
+    closeDetail();
+    renderAll();
+    toast(tx({
+      es:'Retraso comunicado y hora de llegada actualizada.',en:'Delay reported and arrival time updated.',fr:'Retard signalé et heure d’arrivée mise à jour.',de:'Verspätung gemeldet und Ankunftszeit aktualisiert.'
+    }))
+  }catch(e){
+    toast(errorText(e))
+  }
+}
+function showUsefulGuide(){
+  const useful=snapshot.content.useful||{},journey=snapshot.journey||{},items=(useful.items||[]).filter(x=>!['beach_webcam','beach_safety','jellyfish'].includes(String(x&&x.id||''))).filter(x=>!x.audience||x.audience==='all'||x.audience===journey.transportId);
+  const card=x=>{
+    const u=safeUrl(x.url),phone=String(x.phone||'').replace(/[^+\d]/g,''),wa=String(x.whatsappPhone||'').replace(/\D/g,'');
+    return `<div class="useful-card"><span class="ico" aria-hidden="true">${esc(x.icon||'ℹ️')}</span><span style="flex:1"><b>${esc(tx(x.title))}</b><p>${esc(tx(x.description))}</p></span><span class="useful-actions">${phone?`<a class="mini-action" href="tel:${attr(phone)}" aria-label="${attr(tx({es:'Llamar',en:'Call',fr:'Appeler',de:'Anrufen'}))}">📞</a>`:''}${wa?`<a class="mini-action" href="https://wa.me/${attr(wa)}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">💬</a>`:''}${u?`<a class="mini-action" href="${attr(u)}" target="_blank" rel="noopener noreferrer" aria-label="${attr(tx({es:'Abrir información',en:'Open information',fr:'Ouvrir les informations',de:'Information öffnen'}))}">↗</a>`:''}</span></div>`
+  };
+  document.getElementById('detail-content').innerHTML=`<div style="font-size:42px">ℹ️</div><h2 id="detail-title">${esc(tx(useful.title)||tx({es:'Benidorm útil',en:'Useful Benidorm'}))}</h2><p>${esc(tx(useful.intro))}</p><div class="useful-grid">${items.map(card).join('')}</div>`;
+  openDetailA11y()
+}
+function showSafetyGuide(){
+  const safety=sanitizeGuestContent_(snapshot.content.safety)||{},equipment=safety.equipment||[],emergency=safety.emergency||[],health=safety.health||[];
+  const item=(x,kind)=>{
+    const phone=String(x.phone||'').replace(/[^+\d]/g,''),u=safeUrl(x.url);
+    return `<div class="safety-card ${x.urgent?'urgent':''}"><span class="ico" aria-hidden="true">${esc(x.icon||'ℹ️')}</span><span><b>${esc(tx(x.title))}</b><span>${esc(tx(x.description||x.body))}</span></span><span class="card-actions">${phone?`<a class="mini-action" href="tel:${attr(phone)}" aria-label="${attr(tx({es:'Llamar',en:'Call',fr:'Appeler',de:'Anrufen'}))}">📞</a>`:''}${u?`<a class="mini-action" href="${attr(u)}" target="_blank" rel="noopener noreferrer" aria-label="${attr(tx({es:'Abrir mapa',en:'Open map',fr:'Ouvrir la carte',de:'Karte öffnen'}))}">📍</a>`:''}</span></div>`
+  };
+  document.getElementById('detail-content').innerHTML=`<div class="safety-hero"><h3>🆘 ${esc(tx(safety.title)||tx({es:'Seguridad y emergencias',en:'Safety and emergencies'}))}</h3><p>${esc(tx(safety.intro))}</p></div><h2 id="detail-title">${esc(tx({es:'Actúa con calma y rapidez',en:'Act calmly and quickly',fr:'Agissez calmement et rapidement',de:'Ruhig und schnell handeln'}))}</h2><h3>${esc(tx({es:'En el apartamento',en:'In the apartment',fr:'Dans l’appartement',de:'In der Wohnung'}))}</h3><div class="safety-list">${equipment.map(x=>item(x,'equipment')).join('')}</div><h3>${esc(tx({es:'Teléfonos de emergencia',en:'Emergency numbers',fr:'Numéros d’urgence',de:'Notrufnummern'}))}</h3><div class="safety-list">${emergency.map(x=>item(x,'emergency')).join('')}</div><h3>${esc(tx({es:'Asistencia sanitaria',en:'Medical assistance',fr:'Assistance médicale',de:'Medizinische Hilfe'}))}</h3><div class="safety-list">${health.map(x=>item(x,'health')).join('')}</div>`;
+  openDetailA11y()
+}
+function openVisibleManual(i){
+  const x=(window._visibleManual||[])[Number(i)];
+  if(!x)return;
+  const list=snapshot.content.manual||[],original=list.indexOf(x);
+  if(original>=0)openManual(original)
+}
+function openWasteGuide(){
+  const w=sanitizeGuestContent_(snapshot.content.waste)||{},map=safeUrl(w.mapUrl),day=safeUrl(w.photoDay),night=safeUrl(w.photoNight),bins=Array.isArray(w.bins)?w.bins:[],rules=Array.isArray(w.rules)?w.rules:[];
+  const walking=w.walkingMinutes?` · ${esc(String(w.walkingMinutes))} ${esc(tx({es:'min andando',en:'min walk',fr:'min à pied',de:'Min. zu Fuß'}))}`:'';
+  const photos=(day||night)?`<div class="waste-photos">${day?`<figure class="waste-photo"><img src="${attr(day)}" alt=""><figcaption>${esc(tx({es:'Vista de día',en:'Day view',fr:'Vue de jour',de:'Ansicht bei Tag'}))}</figcaption></figure>`:''}${night?`<figure class="waste-photo"><img src="${attr(night)}" alt=""><figcaption>${esc(tx({es:'Vista de noche',en:'Night view',fr:'Vue de nuit',de:'Ansicht bei Nacht'}))}</figcaption></figure>`:''}</div>`:'';
+  document.getElementById('detail-content').innerHTML=`<div style="font-size:42px">${esc(w.icon||'🗑️')}</div><h2 id="detail-title">${esc(tx(w.title)||tx({es:'Basura y reciclaje',en:'Waste and recycling',fr:'Déchets et recyclage',de:'Müll und Recycling'}))}</h2><div class="waste-location"><span class="ico" aria-hidden="true">📍</span><span><b>${esc(tx(w.locationName)||tx({es:'Consulta la ubicación con recepción',en:'Ask reception for the location',fr:'Demandez l’emplacement à la réception',de:'Standort an der Rezeption erfragen'}))}</b><p class="subtle" style="margin:4px 0 0">${esc(tx(w.directions))}${walking}</p></span></div>${map?`<div class="actions"><a class="action primary" href="${attr(map)}" target="_blank" rel="noopener noreferrer">📍 ${esc(tx({es:'Abrir punto exacto en el mapa',en:'Open exact point on map',fr:'Ouvrir le point exact sur la carte',de:'Genauen Punkt auf Karte öffnen'}))}</a></div>`:''}${photos}<div class="warning-box" style="margin-top:13px">🕐 ${esc(tx(w.schedule))}</div><div class="waste-grid">${bins.map(x=>`<div class="waste-bin"><b>${esc(x.icon||'•')} ${esc(tx(x.title))}</b><p>${esc(tx(x.body))}</p></div>`).join('')}</div>${rules.length?`<ul class="waste-rules">${rules.map(x=>`<li>${esc(tx(x))}</li>`).join('')}</ul>`:''}`;
+  openDetailA11y();
+}
+function openManual(i){
+  const x=snapshot.content.manual[i];
+  const image=safeUrl(x.imageUrl);
+  document.getElementById('detail-content').innerHTML=`<div style="font-size:42px">${esc(x.icon||'ℹ️')}</div><h2 id="detail-title">${esc(tx(x.title))}</h2>${image?`<img loading="lazy" decoding="async" src="${attr(image)}" alt="${attr(tx(x.title))}">`:''}<p>${esc(tx(x.body))}</p>${x.locked?`<div class="warning-box">🔒 ${esc(tr('sensitive_locked'))}</div>`:''}${x.helpType?`<div class="actions"><button class="action secondary" onclick="openIncidentFromManual(${i})">🛎️ ${esc(tr('nav_help'))}</button></div>`:''}`;
+  document.getElementById('detail-content').insertAdjacentHTML('beforeend',v19Media(x,true));
+  openDetailA11y()
+}
+function closeDetail(){
+  const d=document.getElementById('detail');
+  d.classList.remove('open');
+  d.setAttribute('aria-hidden','true');
+  document.body.style.overflow='';
+  if(modalReturnFocus&&modalReturnFocus.focus)modalReturnFocus.focus()
+}
+function openDetailA11y(){
+  modalReturnFocus=document.activeElement;
+  const d=document.getElementById('detail');
+  d.classList.add('open');
+  d.setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden';
+  setTimeout(()=>d.querySelector('.detail-sheet').focus(),0)
+}
+document.addEventListener('keydown',e=>{
+  const d=document.getElementById('detail');if(!d.classList.contains('open'))return;if(e.key==='Escape'){
+    closeDetail();return
+  }if(e.key==='Tab'){
+    const f=[...d.querySelectorAll('button,[href],input,textarea,select,[tabindex]:not([tabindex="-1"])')].filter(x=>!x.disabled);if(!f.length)return;const first=f[0],last=f[f.length-1];if(e.shiftKey&&document.activeElement===first){
+      e.preventDefault();last.focus()
+    }else if(!e.shiftKey&&document.activeElement===last){
+      e.preventDefault();first.focus()
+    }
+  }
+})
+function showArrivalTimeDialog(){
+  document.getElementById('detail-content').innerHTML=`<h2 id="detail-title">🕐 ${esc(tr('arrival_time'))}</h2><div class="form"><div class="field"><label>${esc(tr('arrival_time'))}</label><input id="arrival-time-input" type="time" value="${attr(snapshot.reservation.arrivalTime||'14:00')}"></div><button class="action primary" onclick="saveArrivalTime()">✓ ${esc(tx({es:'Guardar hora',en:'Save time',fr:'Enregistrer',de:'Uhrzeit speichern'}))}</button></div>`;
+  openDetailA11y()
+}
+async function saveArrivalTime(){
+  const v=document.getElementById('arrival-time-input').value;
+  try{
+    const r=await api({
+      action:'updateGuestArrivalTime',guestSessionToken,arrivalTime:v
+    },30000);
+    if(!r||!r.ok)throw new Error(r&&r.error||'Error');
+    snapshot=r.snapshot;
+    closeDetail();
+    renderAll();
+    toast(r.changed?tx({
+      es:'Hora de llegada actualizada correctamente.',en:'Arrival time updated successfully.',fr:'Heure d’arrivée mise à jour.',de:'Ankunftszeit erfolgreich aktualisiert.'
+    }):tx({
+      es:'La hora ya estaba guardada.',en:'That time was already saved.',fr:'Cette heure était déjà enregistrée.',de:'Diese Uhrzeit war bereits gespeichert.'
+    }))
+  }catch(e){
+    toast(errorText(e))
+  }
+}
+/* RC17 · Bloqueo de doble envio. El servidor ya es idempotente, pero dos
+   pulsaciones con red lenta generaban dos peticiones y podian producir dos
+   avisos Pushover antes de que la primera cerrara. */
+let accionEnVuelo=false;
+async function conAccionUnica(fn){
+  if(accionEnVuelo)return;
+  accionEnVuelo=true;
+  try{
+    await fn()
+  }finally{
+    accionEnVuelo=false
+  }
+}
+async function confirmEntry(){
+  return conAccionUnica(async()=>{
+    try{
+      const r=await api({
+        action:'confirmGuestEntry',guestSessionToken
+      },30000);if(!r||!r.ok)throw new Error(r&&r.error||'Error');snapshot=r.snapshot;renderAll();toast(tr('sent'))
+    }catch(e){
+      toast(errorText(e))
+    }
+  })
+}
+function openIncidentFromIndex(index){
+  const types=(snapshot.content.help&&snapshot.content.help.types)||[];
+  const x=types[Number(index)];
+  if(!x)return;
+  openIncident(String(x.id||'other'),tx(x.title),String(x.severity||'normal'))
+}
+function openIncidentFromManual(index){
+  const x=(snapshot.content.manual||[])[Number(index)];
+  if(!x||!x.helpType)return;
+  closeDetail();
+  openIncident(String(x.helpType),tx(x.title),'normal')
+}
+function openIncident(type,title,priority){
+  incidentDraft={
+    type,priority,submissionId:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'_'+Math.random().toString(36).slice(2)),photoBase64:'',photoMimeType:''
+  };
+  document.getElementById('detail-content').innerHTML=`<h2 id="detail-title">🛎️ ${esc(title)}</h2><div class="form"><div class="field"><label>${esc(tr('description'))}</label><textarea id="incident-description" maxlength="1500" placeholder="${attr(tr('incident_desc'))}"></textarea></div><button class="action secondary" onclick="document.getElementById('incident-photo').click()">📷 ${esc(tr('add_photo'))}</button><img id="incident-photo-preview" class="photo-preview hidden" alt=""><button class="action danger" onclick="sendIncident()">🛎️ ${esc(tr('send_incident'))}</button></div>`;
+  openDetailA11y()
+}
+async function prepareIncidentPhoto(event){
+  const file=event.target.files&&event.target.files[0];
+  if(!file)return;
+  try{
+    const data=await compressImage(file,1500,.76);
+    incidentDraft.photoBase64=data.base64;
+    incidentDraft.photoMimeType=data.mime;
+    const img=document.getElementById('incident-photo-preview');
+    img.src='data:'+data.mime+';base64,'+data.base64;
+    img.classList.remove('hidden')
+  }catch(e){
+    toast(errorText(e))
+  }event.target.value=''
+}
+function compressImage(file,maxSide,quality){
+  return new Promise(async(resolve,reject)=>{
+    if(file.size>8e6)return reject(new Error(tx({
+      es:'La fotografía es demasiado grande',en:'The photo is too large',fr:'La photo est trop grande',de:'Das Foto ist zu groß'
+    })));let source=null,url='';try{
+      if('createImageBitmap'in window)source=await createImageBitmap(file,{
+        imageOrientation:'from-image'
+      });else{
+        source=await new Promise((ok,no)=>{
+          const img=new Image();url=URL.createObjectURL(file);img.onload=()=>ok(img);img.onerror=no;img.src=url
+        })
+      }let w=source.width,h=source.height;if(Math.max(w,h)>maxSide){
+        const f=maxSide/Math.max(w,h);w=Math.round(w*f);h=Math.round(h*f)
+      }const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(source,0,0,w,h);if(source.close)source.close();if(url)URL.revokeObjectURL(url);resolve({
+        base64:c.toDataURL('image/jpeg',quality).split(',')[1],mime:'image/jpeg'
+      })
+    }catch(_e){
+      if(url)URL.revokeObjectURL(url);reject(new Error(tx({
+        es:'No se pudo leer la fotografía',en:'The photo could not be read',fr:'Impossible de lire la photo',de:'Das Foto konnte nicht gelesen werden'
+      })))
+    }
+  })
+}
+async function sendIncident(){
+  if(incidentDraft.sending)return;incidentDraft.sending=true;
+  const description=document.getElementById('incident-description').value.trim();
+  const b=document.querySelector('#detail-content .action.danger');
+  let enviado=false;
+  try{
+    if(b){
+      b.disabled=true;
+      b.textContent=tr('loading')
+    }const r=await api({
+      action:'submitGuestIncident',submissionId:incidentDraft.submissionId,guestSessionToken,type:incidentDraft.type,priority:incidentDraft.priority,description,photoBase64:incidentDraft.photoBase64,photoMimeType:incidentDraft.photoMimeType
+    },45000);
+    if(!r||!r.ok)throw new Error(r&&r.error||'Error');
+    enviado=true;
+    document.getElementById('detail-content').innerHTML=`<div class="success-box">✓ ${esc(tr('sent'))}<br><small>${esc(r.incidentId||'')}</small></div>`;
+    refreshSnapshot();setTimeout(closeDetail,1800)
+  }catch(e){
+    toast(errorText(e))
+  }finally{
+    incidentDraft.sending=false;
+    /* RC17: sin este bloque el boton quedaba deshabilitado y con el texto "Cargando..." tras un timeout, justo en la incidencia urgente "No puedo entrar". */
+    if(!enviado&&b){
+      b.disabled=false;
+      b.textContent='🛎️ '+tr('send_incident')
+    }
+  }
+}
+async function confirmCheckout(){
+  captureCheckoutDraft();
+  const checks=[...document.querySelectorAll('.checkout-check')];
+  if(checks.some(x=>!x.checked)){
+    toast(tx({
+      es:'Revisa primero la lista de salida.',en:'Please review the checkout list first.',fr:'Vérifiez d’abord la liste de départ.',de:'Bitte zuerst die Check-out-Liste prüfen.'
+    }));
+    return
+  }if(!confirm(tx({
+    es:'¿Confirmas que ya habéis salido del apartamento?',en:'Confirm that you have left the apartment?',fr:'Confirmez-vous avoir quitté l’appartement ?',de:'Bestätigst du, dass ihr die Wohnung verlassen habt?'
+  })))return;
+  return conAccionUnica(async()=>{
+    try{
+      const r=await api({
+        action:'confirmGuestCheckout',guestSessionToken,note:document.getElementById('checkout-note').value.trim()
+      },30000);if(!r||!r.ok)throw new Error(r&&r.error||'Error');snapshot=r.snapshot;renderAll();toast(tr('sent'))
+    }catch(e){
+      toast(errorText(e))
+    }
+  })
+}
+
+// V19 · multimedia, complete arrival routes and authenticated read-only preview
+let previewMode=false;
+function v19Text(es,en,fr,de){return tx({es,en,fr,de});}
+function v19Media(x,videoOnly){
+ if(!x||x.locked||x.sensitive)return '';
+ const photo=safeUrl(x.imageUrl),video=safeUrl(x.videoUrl),poster=safeUrl(x.posterUrl||x.imageUrl);
+ const title=tx(x.title)||v19Text('Guía visual','Visual guide','Guide visuel','Visuelle Anleitung');
+ return (!videoOnly&&photo?'<img class="v19-photo" loading="lazy" decoding="async" src="'+attr(photo)+'" alt="'+attr(title)+'">':'')+(video?'<video class="v19-video" controls playsinline crossorigin="anonymous" preload="none" '+(poster?'poster="'+attr(poster)+'"':'')+' aria-label="'+attr(title)+'"><source src="'+attr(video)+'" type="video/mp4">'+Object.entries(x.captions||{}).filter(([l,u])=>safeUrl(u)).map(([l,u])=>'<track kind="captions" srclang="'+attr(l)+'" label="'+attr(l.toUpperCase())+'" src="'+attr(safeUrl(u))+'" '+(l===lang?'default':'')+'>').join('')+'</video><p class="subtle">'+esc(v19Text('Si el vídeo no carga, sigue los pasos escritos o abre Ayuda.','If the video does not load, follow the written steps or open Help.','Si la vidéo ne charge pas, suivez les étapes écrites ou ouvrez Aide.','Wenn das Video nicht lädt, folge den Textschritten oder öffne Hilfe.'))+'</p>':'');
+}
+function v19Point(x,title){
+ if(!x||(!tx(x.body)&&!safeUrl(x.mapsUrl)))return '';
+ const url=safeUrl(x.mapsUrl);
+ return '<article class="card v19-point"><h3>'+esc(tx(x.title)||title)+'</h3><p>'+esc(tx(x.body))+'</p>'+v19Media(x)+(url?'<a class="action secondary" target="_blank" rel="noopener noreferrer" href="'+attr(url)+'">'+esc(v19Text('Abrir punto exacto','Open exact location','Ouvrir le point exact','Genauen Ort öffnen'))+'</a>':'')+'</article>';
+}
+function v19Meeting(){
+ const c=snapshot.coordination||{},arrival=snapshot.content.arrival||{},h=arrival.handover||{};
+ const receiver=c.receiver||h.hostName||'Domingo',phone=String(h.phone||'').replace(/[^+0-9]/g,'');
+ const state=c.state==='confirmada'?v19Text('Hora confirmada','Confirmed time','Heure confirmée','Bestätigte Uhrzeit'):v19Text('Pendiente de coordinación','Awaiting coordination','En attente de confirmation','Abstimmung ausstehend');
+ return '<article class="card v19-meeting"><h2>'+esc(v19Text('Tu encuentro','Your meeting','Votre rendez-vous','Dein Treffpunkt'))+'</h2><p><strong>'+esc(receiver)+'</strong> · '+esc(state)+'</p><p>'+esc(v19Text('Propuesta','Proposed','Proposée','Vorgeschlagen'))+': '+esc(c.proposed||snapshot.reservation.arrivalTime||'—')+' · '+esc(v19Text('Acordada','Agreed','Convenue','Vereinbart'))+': '+esc(c.confirmed||'—')+'</p>'+(phone?'<a class="action secondary" href="tel:'+attr(phone)+'">'+esc(v19Text('Llamar','Call','Appeler','Anrufen'))+' · '+esc(receiver)+'</a>':'')+'<button class="action secondary" onclick="showDelayDialog()">'+esc(v19Text('Voy con retraso','I am delayed','Je suis en retard','Ich verspäte mich'))+'</button></article>'+v19Point(arrival.meeting,v19Text('Punto de encuentro','Meeting point','Point de rencontre','Treffpunkt'));
+}
+function renderTravel(){
+ const el=document.getElementById('view-travel');if(!el||!snapshot)return;
+ const guides=travelGuides(),out=travelDirection==='out',saved=snapshot.journey||{};
+ if(!travelOrigin||!guides.some(g=>g.id===travelOrigin))travelOrigin=saved.transportId||guides[0]?.id||'';
+ const index=guides.findIndex(g=>g.id===travelOrigin),g=guides[index];
+ const opts=g?(out?(g.outbound||[]):(g.options||[])):[];
+ const a=snapshot.content.arrival||{};
+ el.innerHTML='<div class="page-head"><h1>'+esc(tr(out?'travel_title_out':'travel_title_in'))+'</h1><p>'+esc(v19Text('Desde tu origen hasta el punto de encuentro.','From your origin to the meeting point.','De votre départ au point de rencontre.','Von deinem Startpunkt bis zum Treffpunkt.'))+'</p></div>'+
+ '<div class="dir-toggle"><button class="'+(!out?'active':'')+'" onclick="setTravelDirection(\'in\')">'+esc(tr('travel_in'))+'</button><button class="'+(out?'active':'')+'" onclick="setTravelDirection(\'out\')">'+esc(tr('travel_out'))+'</button></div>'+
+ '<div class="origin-grid">'+guides.map((x,i)=>'<button class="origin-btn '+(x.id===travelOrigin?'active':'')+'" onclick="setTravelOriginByIndex('+i+')">'+ico(travelIconFor(x.id))+' '+esc(tx(x.title))+'</button>').join('')+'</div>'+
+ '<p class="subtle">'+esc(v19Text('Estas son alternativas: elige la que encaje con tu viaje. Consulta horarios y condiciones antes de salir.','These are alternatives: choose the one that suits your trip. Check schedules and conditions before leaving.','Ce sont des alternatives : choisissez celle qui vous convient. Consultez les horaires avant le départ.','Dies sind Alternativen. Wähle die passende und prüfe Fahrplan und Bedingungen.'))+'</p>'+
+ opts.map((o,i)=>'<article class="route-card"><h3>'+esc(tx(o.title))+'</h3><p>'+esc(tx(o.body))+'</p>'+v19Media(o)+(safeUrl(o.url)?'<a class="action secondary" href="'+attr(safeUrl(o.url))+'" target="_blank" rel="noopener noreferrer">'+esc(v19Text('Consultar opción','Check option','Consulter cette option','Option ansehen'))+'</a>':'')+(!out?'<button class="action primary" onclick="saveJourneyChoiceByIndex('+index+','+i+')">'+esc(saved.transportId===g.id&&saved.optionId===o.id?v19Text('Opción elegida','Selected option','Option choisie','Gewählte Option'):v19Text('Elegir esta opción','Choose this option','Choisir cette option','Diese Option wählen'))+'</button>':'')+'</article>').join('')+
+ (out&&!opts.length?'<div class="card"><p>'+esc(v19Text('Consulta con nosotros el recorrido de regreso. No asumimos que las paradas sean las mismas que a la llegada.','Ask us about your return journey. Stops may differ from your arrival.','Contactez-nous pour le retour : les arrêts peuvent différer.','Frage uns nach der Rückfahrt. Die Haltestellen können abweichen.'))+'</p><button class="action secondary" onclick="showView(\'help\')">'+esc(tr('nav_help'))+'</button></div>':'')+
+ (!out?v19Meeting()+v19Point(a.dropoff,v19Text('Descarga de equipaje','Luggage drop-off','Dépose des bagages','Gepäck ausladen'))+(a.parkings||[]).map(x=>v19Point(x,v19Text('Aparcamiento','Parking','Parking','Parkplatz'))).join('')+'<div class="section-head"><h2>'+esc(tr('last_meters'))+'</h2></div>'+(a.steps||[]).filter(x=>!x.needsContent).map(x=>v19Point(x,tx(x.title))).join(''):'');
+}
+function v19PreviewInit(q){
+ const origin=q.get('previewOrigin')||'',nonce=decodeURIComponent(location.hash.slice(1));
+ if(!/^https:\/\/[a-zA-Z0-9.-]+\.googleusercontent\.com$/.test(origin)&&origin!=='https://script.google.com'){showError(new Error('Preview origin invalid'));return;}
+ if(!window.opener){showError(new Error('Open preview from the private panel'));return;}
+ let done=false;
+ function receive(e){if(e.source!==window.opener||e.origin!==origin||e.data?.type!=='BND_PREVIEW_DATA'||e.data.nonce!==nonce)return;
+  done=true;clearInterval(timer);window.removeEventListener('message',receive);previewMode=true;snapshot=e.data.snapshot;reservationId=snapshot.reservation.id;openPortal();
+  const bar=document.createElement('div');bar.className='v19-preview';bar.textContent=v19Text('Previsualización · solo lectura · sin registrar aperturas','Preview · read only · no visits recorded','Aperçu · lecture seule · sans enregistrer de visite','Vorschau · nur Lesen · keine Besuchserfassung');document.body.prepend(bar);
+ }
+ window.addEventListener('message',receive);const ready=()=>window.opener.postMessage({type:'BND_PREVIEW_READY',nonce},origin);const timer=setInterval(ready,700);ready();setTimeout(()=>{if(!done){clearInterval(timer);window.removeEventListener('message',receive);showError(new Error('Preview timed out'));}},60000);
+}
+document.addEventListener('DOMContentLoaded',init);
+
+async function securityCloseStay(){
+  const text=tx({es:'Se cerrará esta sesión. Podrás volver a entrar desde el enlace original de Airbnb.',en:'This session will close. You can reopen the original Airbnb link.',fr:'Cette session sera fermée. Vous pourrez rouvrir le lien Airbnb original.',de:'Diese Sitzung wird geschlossen. Du kannst den ursprünglichen Airbnb-Link wieder öffnen.'});
+  if(!confirm(text))return;
+  try{
+    const result=await api({action:'logoutGuest',guestSessionToken:guestSessionToken,reservaId:reservationId});
+    if(!result.ok)throw Error('logout');
+    forgetStay();snapshot=null;cleanTokenUrl();location.replace(location.pathname+'?r='+encodeURIComponent(reservationId));
+  }catch(_e){alert(tx({es:'No se pudo cerrar la sesión en el servidor. Comprueba la conexión y vuelve a intentarlo.',en:'Could not close the server session. Check your connection and retry.',fr:'Impossible de fermer la session serveur. Vérifiez la connexion.',de:'Serversitzung konnte nicht geschlossen werden. Prüfe die Verbindung.'}));}
+}
+</script>
+</body>
+</html>
