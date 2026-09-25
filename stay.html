@@ -642,7 +642,7 @@ body[data-view="travel"] .content,body[data-view="move"] .content{padding-top:0}
 <script src="environment.js"></script>
 <script>
 'use strict';
-const APP_VERSION='1.9.0-RC3.2.5-DEV';
+const APP_VERSION='1.9.0-RC3.2.6-DEV';
 const GUEST_WIRE_VERSION='1.9.0-guest-rc1';
 const GUEST_PROTOCOL='BND_GUEST_V1';
 const APPS_SCRIPT_URL=String(window.BND_ENV?.appsScriptUrl||'');
@@ -2121,22 +2121,50 @@ function guestMapClassification_(ref,legacy){
 // RC3.2.4 · one display rule for every renderer: mapRef first; legacy only if
 // EXACT_PLACE/COORDINATE; a present mapRef never falls back to a legacy URL.
 function guestMapRefPresent_(ref){return !!ref&&typeof ref==='object'&&!Array.isArray(ref)&&['label','address','placeId','lat','lng'].some(function(k){return ref[k]!==undefined&&ref[k]!==null&&String(ref[k]).trim()!=='';});}
-// RC3.2.5 · Google Maps host detection (www/maps/no-www, any google TLD, short links).
-function guestIsGoogleMapsUrl_(value){
-  return /^https?:\/\/(?:(?:www\.|maps\.)?google\.[a-z.]+\/maps(?:[\/?#]|$)|maps\.google\.[a-z.]+(?:[\/?#]|$)|maps\.app\.goo\.gl(?:[\/?#]|$)|goo\.gl\/maps(?:[\/?#]|$))/i.test(String(value||'').trim());
+// RC3.2.6 · URLs are classified by their REAL parsed host, never by how the
+// string is written (:443, userinfo, case, trailing dot, percent-encoded host).
+// Apps Script V8 has no WHATWG URL class, so the structural parser below is the
+// authority in the three runtimes; where URL exists (browser) it is a mandatory
+// cross-check that must agree on host and have no userinfo.
+function guestParsedUrl_(raw){
+  var u=String(raw==null?'':raw).trim();
+  if(!u||/[\u0000-\u001F\u007F\\\s]/.test(u))return null;
+  var m=/^https:\/\/([^\/?#]*)(\/[^?#]*)?(\?[^#]*)?(#.*)?$/i.exec(u);if(!m)return null;
+  var authority=m[1];if(!authority||authority.indexOf('@')>=0)return null; // userinfo always rejected
+  var hp=/^([A-Za-z0-9.-]+)(?::([0-9]*))?$/.exec(authority);if(!hp)return null;
+  var host=hp[1].toLowerCase().replace(/\.$/,''),port=hp[2]===undefined?'':hp[2];
+  if(port!==''&&port!=='443')return null;
+  if(!/^[a-z0-9-]+(?:\.[a-z0-9-]+)*$/.test(host))return null;
+  var parsed={protocol:'https:',hostname:host,port:'',pathname:m[2]||'/',search:m[3]||'',hash:m[4]||''};
+  parsed.href='https://'+host+parsed.pathname+parsed.search+parsed.hash;
+  if(typeof URL==='function'){
+    try{var w=new URL(u);if(w.protocol!=='https:'||w.username!==''||w.password!==''||w.hostname.replace(/\.$/,'')!==host||(w.port!==''&&w.port!=='443'))return null;}
+    catch(_e){return null;}
+  }
+  return parsed;
 }
-// Short links cannot be verified without an external redirect: never exact.
+function guestMapsHostKind_(p){
+  if(!p)return '';
+  var h=p.hostname;
+  if(h==='maps.app.goo.gl'||(h==='goo.gl'&&/^\/maps(?:\/|$)/.test(p.pathname)))return 'SHORTLINK';
+  if(/^maps\.google\.(?:[a-z]{2,3}|com?\.[a-z]{2})$/.test(h))return 'MAPS';
+  if(/^(?:www\.)?google\.(?:[a-z]{2,3}|com?\.[a-z]{2})$/.test(h)&&/^\/maps(?:\/|$)/.test(p.pathname))return 'MAPS';
+  return '';
+}
+function guestIsGoogleMapsUrl_(value){return !!guestMapsHostKind_(guestParsedUrl_(value));}
 function guestMapUrlKind_(value){
   var u=String(value||'').trim();if(!u)return 'EMPTY';
-  if(/^https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl\/maps)(?:[\/?#]|$)/i.test(u))return 'UNVERIFIED_SHORTLINK';
-  return guestMapClassification_(null,u);
+  var p=guestParsedUrl_(u),host=guestMapsHostKind_(p);
+  if(!p)return 'INVALID';
+  if(host==='SHORTLINK')return 'UNVERIFIED_SHORTLINK';
+  return guestMapClassification_(null,p.href); // normalised: :443 removed, host lower-cased
 }
 // Single fail-closed authority for EVERY outbound URL shown to a guest, whatever
 // the property (officialUrl, url, mapsUrl, directionsUrl, searchUrl...).
 function guestSafeOutboundUrl_(value){
-  var u=String(value||'').trim();
-  if(!/^https:\/\//i.test(u)||/[\u0000-\u001F\u007F]/.test(u))return '';
-  if(guestIsGoogleMapsUrl_(u)){var kind=guestMapUrlKind_(u);return kind==='EXACT_PLACE'||kind==='COORDINATE'?u:'';}
+  var u=String(value||'').trim(),p=guestParsedUrl_(u);
+  if(!p)return '';
+  if(guestMapsHostKind_(p)){var kind=guestMapUrlKind_(u);return kind==='EXACT_PLACE'||kind==='COORDINATE'?p.href:'';}
   return u;
 }
 function guestDisplayMapUrl_(item,directions){
