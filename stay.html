@@ -642,7 +642,7 @@ body[data-view="travel"] .content,body[data-view="move"] .content{padding-top:0}
 <script src="environment.js"></script>
 <script>
 'use strict';
-const APP_VERSION='1.9.0-RC3.1-CORRECTIVE';
+const APP_VERSION='1.9.0-RC3.2.5-DEV';
 const GUEST_WIRE_VERSION='1.9.0-guest-rc1';
 const GUEST_PROTOCOL='BND_GUEST_V1';
 const APPS_SCRIPT_URL=String(window.BND_ENV?.appsScriptUrl||'');
@@ -696,7 +696,7 @@ function sanitizeGuestContent_(value) {
   if(Array.isArray(value)) return value.map(sanitizeGuestContent_).filter(function(x){return x!==null;});
   if(!value || typeof value!=='object') return value;
   var clean={};Object.keys(value).forEach(function(k){
-    if(['needsContent','draftOnly','editorialPending','placeholder','reviewedBy','reviewedAt','sourceText','publicationValidation'].indexOf(k)>=0)return;
+    if(['needsContent','draftOnly','editorialPending','placeholder','reviewedBy','reviewedAt','sourceText','publicationValidation','internalNote','verifiedBy','verifiedAt','manuallyVerified'].indexOf(k)>=0)return;
     var v=sanitizeGuestContent_(value[k]);if(/(?:url|photoDay|photoNight)$/i.test(k)&&typeof v==='string'&&v&&!/^https:\/\/[^\s]+$/i.test(v))return;if(v!==null)clean[k]=v;
   });return clean;
 }
@@ -715,9 +715,9 @@ function esc(v){
 }function attr(v){
   return esc(v)
 }
+// RC3.2.5 · every href/src built with safeUrl passes the Google Maps fail-closed rule.
 function safeUrl(v){
-  const text=String(v||'').trim();
-  return /^https:\/\//i.test(text)&&!/[\u0000-\u001F\u007F]/.test(text)?text:''
+  return guestSafeOutboundUrl_(v);
 }
 function applyStaticTranslations(){
   document.documentElement.lang=lang;
@@ -894,6 +894,7 @@ const ERROR_COPY={
 };
 function errorText(error){
   const code=String(error&&error.code||'');
+  if(['GUEST_PORTAL_NOT_PUBLISHED','GUEST_PORTAL_INACTIVE','GUEST_CONTENT_UNAVAILABLE'].includes(code))return tx({es:'Esta guía todavía no está disponible. La información esencial de tu llegada está en el mensaje de Airbnb. Si necesitas ayuda, contacta con el alojamiento.',en:'This guide is not available yet. Essential arrival information is in your Airbnb message. Contact the accommodation if you need help.',fr:'Ce guide n’est pas encore disponible. Les informations essentielles pour votre arrivée figurent dans le message Airbnb. Contactez votre hébergement si besoin.',de:'Dieser Guide ist noch nicht verfügbar. Wichtige Informationen zur Anreise findest du in deiner Airbnb-Nachricht. Kontaktiere bei Fragen die Unterkunft.'});
   const item=ERROR_COPY[code];
   if(item)return tx(item);
   return tx({
@@ -1271,11 +1272,12 @@ function apartmentAccessDetail(){
   return tx(a.accessDetail||a.floorAndDoor||'').trim()
 }
 function essentialMapsUrl(item){
-  const a=snapshot.content&&snapshot.content.apartment||{},address=String(a.address||snapshot.reservation.apartment||'Benidorm');
-  const exact=safeUrl(item&&item.url),apartmentMap=safeUrl(a.mapsUrl),genericMaps=/^https:\/\/maps\.google\.com\/?$/i.test(exact),needsSearch=!exact||exact===apartmentMap||genericMaps||item.needsContent===true;
-  if(!needsSearch)return exact;
-  const term=tx(item&&item.mapsQuery)||tx(item&&item.title)||String(item&&item.id||'servicios');
-  return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(term+' cerca de '+address);
+  return guestDisplayMapUrl_(item,false);
+}
+// RC3.2.4 · external links: Google Maps URLs obey the map display rule; other
+// HTTPS links come from GuestContent only (never hardcoded in this renderer).
+function guestLinkUrl_(x){
+  return guestSafeOutboundUrl_(x&&x.url);
 }
 function journeyPromptHtml(){
   const j=snapshot.journey||{},guides=(snapshot.content.arrival&&snapshot.content.arrival.transportGuides)||[];
@@ -1347,6 +1349,7 @@ function renderAll(){
   renderApartment();
   renderHelp();
   renderCheckout();
+  rc323EnhanceExperience();
   document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=tr(el.dataset.i18n))
 }
 function showView(id){
@@ -1677,12 +1680,12 @@ function renderHome(){
       <article class="card stay-overview-card"><div class="card-title"><h3>📅 ${esc(tx({es:'Duración de la estancia',en:'Length of stay',fr:'Durée du séjour',de:'Aufenthaltsdauer'}))}</h3><span class="badge good">${esc(String(Number(r.nights||0)))} ${esc(tx({es:'noches',en:'nights',fr:'nuits',de:'Nächte'}))}</span></div><div class="arrival-date">${esc(formatDate(r.entry,{weekday:'long',day:'numeric',month:'long'}))}</div><div class="metric-line"><div class="metric">${esc(m.value)}</div><div class="label">${esc(m.label)}</div></div><div class="stay-times"><div class="stay-time"><span>Check-in</span><strong>${esc(r.checkinTime||'14:00')}</strong></div><div class="stay-time"><span>Check-out</span><strong>${esc(r.checkoutTime||'11:00')}</strong></div></div>${arrivalActions}</article>
       <article class="card"><div class="card-title"><h3>🏠 ${esc(s.prepared?tr('prepared'):tr('preparing'))}</h3><span class="badge ${s.prepared?'good':'wait'}">${s.prepared?'✓':'…'}</span></div><p class="subtle">${s.prepared?esc(tx({es:'Limpieza y verificación completadas.',en:'Cleaning and verification completed.',fr:'Ménage et vérification terminés.',de:'Reinigung und Kontrolle abgeschlossen.'})):esc(tx({es:'El estado se actualizará cuando finalice la preparación.',en:'The status will update when preparation is complete.',fr:'Le statut sera actualisé lorsque la préparation sera terminée.',de:'Der Status wird nach Abschluss der Vorbereitung aktualisiert.'}))}</p><div class="subtle">👥 ${esc(String(s.travellers||0))} ${esc(tx({es:'viajeros registrados',en:'registered guests',fr:'voyageurs enregistrés',de:'registrierte Gäste'}))}</div></article>
     </div>
-    <div class="card" style="margin-top:15px"><div class="card-title"><h3>📍 ${esc(tx({es:'Dirección completa del apartamento',en:'Full apartment address',fr:'Adresse complète de l’appartement',de:'Vollständige Wohnungsadresse'}))}</h3></div><p style="margin:0 0 10px"><strong>${esc(apartmentDisplayName())}</strong><br>${esc(address||tx({es:'Consulta la dirección con recepción',en:'Ask reception for the address',fr:'Demandez l’adresse à la réception',de:'Adresse an der Rezeption erfragen'}))}${accessDetail?`<span class="address-detail">${esc(accessDetail)}</span>`:''}</p>${safeUrl(a.mapsUrl)?`<div class="actions"><button class="action secondary" onclick="openMaps()">📍 ${esc(tx({es:'Ver portal en el mapa',en:'View entrance on map',fr:'Voir l’entrée sur la carte',de:'Eingang auf Karte ansehen'}))}</button></div>`:''}</div>
+    <div class="card" style="margin-top:15px"><div class="card-title"><h3>📍 ${esc(tx({es:'Dirección completa del apartamento',en:'Full apartment address',fr:'Adresse complète de l’appartement',de:'Vollständige Wohnungsadresse'}))}</h3></div><p style="margin:0 0 10px"><strong>${esc(apartmentDisplayName())}</strong><br>${esc(address||tx({es:'Consulta la dirección con recepción',en:'Ask reception for the address',fr:'Demandez l’adresse à la réception',de:'Adresse an der Rezeption erfragen'}))}${accessDetail?`<span class="address-detail">${esc(accessDetail)}</span>`:''}</p>${guestDisplayMapUrl_(a,false)?`<div class="actions"><button class="action secondary" onclick="openMaps()">📍 ${esc(tx({es:'Ver portal en el mapa',en:'View entrance on map',fr:'Voir l’entrée sur la carte',de:'Eingang auf Karte ansehen'}))}</button></div>`:''}</div>
     ${renderWeatherSection()}
     ${renderBeachSection()}
     <div class="section-head"><div><h2>${esc(tx({es:'Durante tu estancia',en:'During your stay',fr:'Pendant votre séjour',de:'Während deines Aufenthalts'}))}</h2><p>${esc(tx({es:'Accesos directos sin repetir información.',en:'Direct access without repeated information.',fr:'Accès directs sans informations répétées.',de:'Direkter Zugriff ohne doppelte Informationen.'}))}</p></div></div>
     <div class="quick-grid">${quicks}</div>
-    <div class="section-head"><div><h2>${esc(tr('essentials'))}</h2><p>${esc(tx({es:'Cada opción abre resultados alrededor del apartamento, no solo la dirección.',en:'Each option opens results around the apartment, not just the address.',fr:'Chaque option ouvre les résultats autour de l’appartement.',de:'Jede Option zeigt Ergebnisse rund um die Wohnung.'}))}</p></div></div><div class="essential-list">${essentials.map(x=>{const u=essentialMapsUrl(x);const body=`<span class="ico">${esc(x.icon||'📍')}</span><span><b>${esc(tx(x.title))}</b><span>${esc(tx(x.description))}${x.distance?' · '+esc(x.distance):''}</span><span class="maps-hint">Google Maps ↗</span></span>`;return `<a class="essential-card" href="${attr(u)}" target="_blank" rel="noopener noreferrer">${body}</a>`}).join('')}</div>${usefulItems.length?`<div class="card" style="margin-top:var(--s3)"><div class="card-title"><h3>ℹ️ ${esc(tx({es:'Información práctica',en:'Practical information',fr:'Informations pratiques',de:'Praktische Informationen'}))}</h3></div><p class="subtle">${esc(tx({es:'Servicios oficiales y datos útiles que pueden resolver una necesidad concreta durante el viaje.',en:'Official services and practical information for specific needs during your trip.',fr:'Services officiels et informations pratiques pour un besoin concret pendant le voyage.',de:'Offizielle Dienste und praktische Informationen für konkrete Fragen während der Reise.'}))}</p><div class="actions"><button class="action secondary" onclick="showUsefulGuide()">ℹ️ ${esc(tx(c.useful&&c.useful.title)||tx({es:'Abrir información práctica',en:'Open practical information',fr:'Ouvrir les informations pratiques',de:'Praktische Informationen öffnen'}))}</button></div></div>`:''}${phase==='completed'?`<div class="card" style="margin-top:var(--s3)"><div class="card-title"><h3>💙 ${esc(tx({es:'Gracias por vuestra estancia',en:'Thank you for your stay',fr:'Merci pour votre séjour',de:'Danke für euren Aufenthalt'}))}</h3></div><p class="subtle">${esc(tx({es:'Si creéis que habéis olvidado algo, escribidnos cuanto antes por el chat de Airbnb. Nos ayudará mucho que dejéis vuestra reseña desde Airbnb.',en:'If you think you left something behind, message us through Airbnb as soon as possible. Your Airbnb review would mean a lot to us.',fr:'Si vous pensez avoir oublié un objet, écrivez-nous rapidement via Airbnb. Votre avis Airbnb nous aidera beaucoup.',de:'Falls ihr etwas vergessen habt, schreibt uns bitte schnell über Airbnb. Über eure Airbnb-Bewertung würden wir uns sehr freuen.'}))}</p><div class="actions"><a class="action primary" href="https://www.airbnb.es/trips" target="_blank" rel="noopener noreferrer">⭐ ${esc(tx({es:'Abrir Airbnb y dejar una reseña',en:'Open Airbnb and leave a review',fr:'Ouvrir Airbnb et laisser un avis',de:'Airbnb öffnen und bewerten'}))}</a></div></div>`:''}`;
+    <div class="section-head"><div><h2>${esc(tr('essentials'))}</h2><p>${esc(tx({es:'Cada lugar concreto tiene una ubicación verificada.',en:'Each listed place has a verified location.',fr:'Chaque lieu indiqué a une adresse vérifiée.',de:'Jeder aufgeführte Ort hat einen geprüften Standort.'}))}</p></div></div><div class="essential-list">${essentials.map(x=>{const u=essentialMapsUrl(x);const body=`<span class="ico">${esc(x.icon||'📍')}</span><span><b>${esc(tx(x.title))}</b><span>${esc(tx(x.description))}${x.distance?' · '+esc(x.distance):''}</span>${u?'<span class="maps-hint">Google Maps ↗</span>':''}</span>`;return u?`<a class="essential-card" href="${attr(u)}" target="_blank" rel="noopener noreferrer">${body}</a>`:`<div class="essential-card">${body}</div>`}).join('')}</div>${usefulItems.length?`<div class="card" style="margin-top:var(--s3)"><div class="card-title"><h3>ℹ️ ${esc(tx({es:'Información práctica',en:'Practical information',fr:'Informations pratiques',de:'Praktische Informationen'}))}</h3></div><p class="subtle">${esc(tx({es:'Servicios oficiales y datos útiles que pueden resolver una necesidad concreta durante el viaje.',en:'Official services and practical information for specific needs during your trip.',fr:'Services officiels et informations pratiques pour un besoin concret pendant le voyage.',de:'Offizielle Dienste und praktische Informationen für konkrete Fragen während der Reise.'}))}</p><div class="actions"><button class="action secondary" onclick="showUsefulGuide()">ℹ️ ${esc(tx(c.useful&&c.useful.title)||tx({es:'Abrir información práctica',en:'Open practical information',fr:'Ouvrir les informations pratiques',de:'Praktische Informationen öffnen'}))}</button></div></div>`:''}${phase==='completed'?`<div class="card" style="margin-top:var(--s3)"><div class="card-title"><h3>💙 ${esc(tx({es:'Gracias por vuestra estancia',en:'Thank you for your stay',fr:'Merci pour votre séjour',de:'Danke für euren Aufenthalt'}))}</h3></div><p class="subtle">${esc(tx({es:'Si creéis que habéis olvidado algo, escribidnos cuanto antes por el chat de Airbnb. Nos ayudará mucho que dejéis vuestra reseña desde Airbnb.',en:'If you think you left something behind, message us through Airbnb as soon as possible. Your Airbnb review would mean a lot to us.',fr:'Si vous pensez avoir oublié un objet, écrivez-nous rapidement via Airbnb. Votre avis Airbnb nous aidera beaucoup.',de:'Falls ihr etwas vergessen habt, schreibt uns bitte schnell über Airbnb. Über eure Airbnb-Bewertung würden wir uns sehr freuen.'}))}</p><div class="actions"><a class="action primary" href="https://www.airbnb.es/trips" target="_blank" rel="noopener noreferrer">⭐ ${esc(tx({es:'Abrir Airbnb y dejar una reseña',en:'Open Airbnb and leave a review',fr:'Ouvrir Airbnb et laisser un avis',de:'Airbnb öffnen und bewerten'}))}</a></div></div>`:''}`;
   const primary=phase==='arrival'?v19Meeting():'';
   if(primary)document.getElementById('view-home').insertAdjacentHTML('afterbegin',primary);
 }
@@ -1700,7 +1703,7 @@ function renderArrival(){
   const backupCard=backup.enabled===false?'':`<div class="backup-card"><h3>${esc(backup.icon||'🛟')} ${esc(tx(backup.title))}</h3><p>${esc(tx(backup.body))}</p></div>`;
   const handoverCard=v19Meeting();
   const guideCards=guides.map((g,i)=>`<button class="guide-card ${String(g.id||'')===String(journey.transportId||'')?'selected':''}" onclick="openTransportGuide(${i})"><span class="ico" aria-hidden="true">${esc(g.icon||'🧭')}</span><span><b>${esc(tx(g.title))}</b><span>${esc(tx(g.summary))}</span>${String(g.id||'')===String(journey.transportId||'')?`<span class="choice-pill">✓ ${esc(tx({es:'Seleccionado',en:'Selected',fr:'Sélectionné',de:'Ausgewählt'}))}</span>`:''}</span></button>`).join('');
-  document.getElementById('view-arrival').innerHTML=`<div class="section-head"><div><h2>${esc(tx({es:'¿Cómo vas a llegar a Benidorm?',en:'How will you get to Benidorm?',fr:'Comment allez-vous arriver à Benidorm ?',de:'Wie kommst du nach Benidorm?'}))}</h2><p>${esc(tx({es:'Elige coche, aeropuerto, AVE o autobús y después la opción concreta.',en:'Choose car, airport, rail or bus, then the exact option.',fr:'Choisissez voiture, aéroport, AVE ou bus, puis l’option précise.',de:'Wähle Auto, Flughafen, Bahn oder Bus und anschließend die genaue Option.'}))}</p></div></div><div class="guide-grid">${guideCards}</div>${handoverCard}<div class="delay-card"><h3>⏰ ${esc(tx({es:'¿Tu viaje se retrasa?',en:'Is your journey delayed?',fr:'Votre voyage est retardé ?',de:'Verspätet sich deine Reise?'}))}</h3><p class="subtle">${esc(tx({es:'Actualiza la hora para que podamos organizar la entrega personal de llaves.',en:'Update the time so we can organise the personal key handover.',fr:'Mettez l’heure à jour pour organiser la remise des clés.',de:'Aktualisiere die Uhrzeit für die persönliche Schlüsselübergabe.'}))}</p><div class="actions"><button class="action ${phase==='arrival'?'danger':'secondary'}" onclick="showDelayDialog()">⏰ ${esc(tx({es:'Mi viaje se retrasa',en:'My journey is delayed',fr:'Mon voyage est retardé',de:'Meine Reise verspätet sich'}))}</button></div></div><div class="section-head"><div><h2>${esc(tx({es:'Del portal a la puerta del apartamento',en:'From the entrance to the apartment door',fr:'Du portail à la porte de l’appartement',de:'Vom Eingang bis zur Wohnungstür'}))}</h2><p>${esc(tx(arrival.parking))}</p></div></div><div class="timeline">${steps.map((x,i)=>{const image=safeUrl(x.imageUrl),map=safeUrl(x.mapsUrl);return `<article class="step ${x.locked?'locked':''}"><div class="step-num">${esc(x.icon||String(i+1))}</div><div><h3>${esc(tx(x.title))}</h3><p>${esc(tx(x.body))}</p>${image?`<img loading="lazy" decoding="async" src="${attr(image)}" alt="${attr(tx(x.title))}">`:x.needsContent?`<div class="placeholder">📸 ${esc(tx({es:'Fotografía pendiente de añadir por el anfitrión',en:'Host photo pending',fr:'Photo à ajouter par l’hôte',de:'Foto des Gastgebers ausstehend'}))}</div>`:''}${x.locked?`<div class="lock-note">🔒 ${esc(tr('sensitive_locked'))}</div>`:''}${map?`<div class="actions"><a class="action secondary" href="${attr(map)}" target="_blank" rel="noopener noreferrer">📍 ${esc(tx({es:'Ver punto exacto',en:'View exact point',fr:'Voir le point exact',de:'Genauen Punkt ansehen'}))}</a></div>`:''}</div></article>`}).join('')}</div>${entryNote}<div class="actions"><button class="action success" onclick="confirmEntry()" ${(s.entered||entryDisabled)?'disabled':''}>${s.entered?'✓ '+esc(tx({es:'Entrada confirmada',en:'Entry confirmed',fr:'Entrée confirmée',de:'Ankunft bestätigt'})):'🏠 '+esc(tr('confirm_entry'))}</button></div>`;
+  document.getElementById('view-arrival').innerHTML=`<div class="section-head"><div><h2>${esc(tx({es:'¿Cómo vas a llegar a Benidorm?',en:'How will you get to Benidorm?',fr:'Comment allez-vous arriver à Benidorm ?',de:'Wie kommst du nach Benidorm?'}))}</h2><p>${esc(tx({es:'Elige coche, aeropuerto, AVE o autobús y después la opción concreta.',en:'Choose car, airport, rail or bus, then the exact option.',fr:'Choisissez voiture, aéroport, AVE ou bus, puis l’option précise.',de:'Wähle Auto, Flughafen, Bahn oder Bus und anschließend die genaue Option.'}))}</p></div></div><div class="guide-grid">${guideCards}</div>${handoverCard}<div class="delay-card"><h3>⏰ ${esc(tx({es:'¿Tu viaje se retrasa?',en:'Is your journey delayed?',fr:'Votre voyage est retardé ?',de:'Verspätet sich deine Reise?'}))}</h3><p class="subtle">${esc(tx({es:'Actualiza la hora para que podamos organizar la entrega personal de llaves.',en:'Update the time so we can organise the personal key handover.',fr:'Mettez l’heure à jour pour organiser la remise des clés.',de:'Aktualisiere die Uhrzeit für die persönliche Schlüsselübergabe.'}))}</p><div class="actions"><button class="action ${phase==='arrival'?'danger':'secondary'}" onclick="showDelayDialog()">⏰ ${esc(tx({es:'Mi viaje se retrasa',en:'My journey is delayed',fr:'Mon voyage est retardé',de:'Meine Reise verspätet sich'}))}</button></div></div><div class="section-head"><div><h2>${esc(tx({es:'Del portal a la puerta del apartamento',en:'From the entrance to the apartment door',fr:'Du portail à la porte de l’appartement',de:'Vom Eingang bis zur Wohnungstür'}))}</h2><p>${esc(tx(arrival.parking))}</p></div></div><div class="timeline">${steps.map((x,i)=>{const image=safeUrl(x.imageUrl),map=guestDisplayMapUrl_(x,false);return `<article class="step ${x.locked?'locked':''}"><div class="step-num">${esc(x.icon||String(i+1))}</div><div><h3>${esc(tx(x.title))}</h3><p>${esc(tx(x.body))}</p>${image?`<img loading="lazy" decoding="async" src="${attr(image)}" alt="${attr(tx(x.title))}">`:x.needsContent?`<div class="placeholder">📸 ${esc(tx({es:'Fotografía pendiente de añadir por el anfitrión',en:'Host photo pending',fr:'Photo à ajouter par l’hôte',de:'Foto des Gastgebers ausstehend'}))}</div>`:''}${x.locked?`<div class="lock-note">🔒 ${esc(tr('sensitive_locked'))}</div>`:''}${map?`<div class="actions"><a class="action secondary" href="${attr(map)}" target="_blank" rel="noopener noreferrer">📍 ${esc(tx({es:'Ver punto exacto',en:'View exact point',fr:'Voir le point exact',de:'Genauen Punkt ansehen'}))}</a></div>`:''}</div></article>`}).join('')}</div>${entryNote}<div class="actions"><button class="action success" onclick="confirmEntry()" ${(s.entered||entryDisabled)?'disabled':''}>${s.entered?'✓ '+esc(tx({es:'Entrada confirmada',en:'Entry confirmed',fr:'Entrée confirmée',de:'Ankunft bestätigt'})):'🏠 '+esc(tr('confirm_entry'))}</button></div>`;
 }
 function renderApartment(){
   const c=snapshot.content,w=c.wifi||{},waste=c.waste||{};
@@ -1735,7 +1738,7 @@ function renderCheckout(){
   document.getElementById('view-checkout').innerHTML=`<div class="section-head"><div><h2>${esc(tx(c.title)||tr('checkout_title'))}</h2><p>${esc(tr('checkout_note'))}</p></div></div><div class="checkout-list">${(c.items||[]).map((x,i)=>{const id=String(x.id||i);return `<label class="check-row"><input type="checkbox" class="checkout-check" data-id="${attr(id)}" ${checkoutDraft.checked[id]?'checked':''}><span>${esc(x.icon||'✓')} ${esc(tx(x.title))}</span></label>`}).join('')}</div><div class="card departure-card"><div class="card-title"><h3>🧭 ${esc(tx({es:'Continúa tu viaje',en:'Continue your journey',fr:'Poursuivez votre voyage',de:'Reise fortsetzen'}))}</h3></div><p class="subtle">${esc(tx({es:'Consulta cómo volver al aeropuerto, AVE, estación de autobuses o salir en coche.',en:'Check how to reach the airport, rail station, bus station or leave by car.',fr:'Consultez le trajet vers l’aéroport, l’AVE, la gare routière ou en voiture.',de:'Prüfe den Weg zum Flughafen, Bahnhof, Busbahnhof oder mit dem Auto.'}))}</p><div class="actions"><button class="action secondary" onclick="showView('arrival')">🧭 ${esc(tx({es:'Ver transportes de salida',en:'View return transport',fr:'Voir les transports de retour',de:'Verkehrsmittel für die Rückreise'}))}</button></div></div><div class="card" style="margin-top:13px"><p class="subtle">${esc(tx(c.luggage))}</p><div class="field"><label>${esc(tr('checkout_message'))}</label><textarea id="checkout-note" maxlength="500">${esc(checkoutDraft.note)}</textarea></div>${note}<div class="actions"><button class="action success" onclick="confirmCheckout()" ${(s.checkedOut||unavailable)?'disabled':''}>${s.checkedOut?'✓ '+esc(tx({es:'Salida confirmada',en:'Checkout confirmed',fr:'Départ confirmé',de:'Abreise bestätigt'})):'🚪 '+esc(tr('checkout_confirm'))}</button></div></div>`
 }
 function openMaps(){
-  const u=safeUrl(snapshot.content.apartment&&snapshot.content.apartment.mapsUrl);
+  const apt=snapshot.content.apartment||{},u=guestDisplayMapUrl_(apt,false);
   if(u)open(u,'_blank','noopener,noreferrer')
 }function copyWifi(){
   const w=snapshot&&snapshot.content&&snapshot.content.wifi||{},password=String(w.password||'');
@@ -1752,7 +1755,7 @@ function openTransportGuide(index){
   window._activeTransportGuideIndex=Number(index);
   const journey=snapshot.journey||{};
   const options=(g.options||[]).map((o,optionIndex)=>{
-    const u=safeUrl(o.url),selected=String(g.id||'')===String(journey.transportId||'')&&String(o.id||'')===String(journey.optionId||'');return `<div class="transport-option"><span style="font-size:25px" aria-hidden="true">${esc(o.icon||'🧳')}</span><span style="flex:1"><strong>${esc(tx(o.title))}</strong><p>${esc(tx(o.body))}</p><div class="actions">${u?`<a class="action secondary" href="${attr(u)}" target="_blank" rel="noopener noreferrer">↗ ${esc(tx({es:'Abrir información oficial',en:'Open official information',fr:'Ouvrir les informations officielles',de:'Offizielle Informationen öffnen'}))}</a>`:''}<button class="action ${selected?'success':'primary'}" onclick="saveJourneyChoiceByIndex(${Number(index)},${Number(optionIndex)})">${selected?'✓ '+esc(tx({es:'Seleccionado',en:'Selected',fr:'Sélectionné',de:'Ausgewählt'})):'🧳 '+esc(tx({es:'Este es mi viaje',en:'This is my journey',fr:'C’est mon voyage',de:'Das ist meine Reise'}))}</button></div></span></div>`
+    const u=guestLinkUrl_(o),selected=String(g.id||'')===String(journey.transportId||'')&&String(o.id||'')===String(journey.optionId||'');return `<div class="transport-option"><span style="font-size:25px" aria-hidden="true">${esc(o.icon||'🧳')}</span><span style="flex:1"><strong>${esc(tx(o.title))}</strong><p>${esc(tx(o.body))}</p><div class="actions">${u?`<a class="action secondary" href="${attr(u)}" target="_blank" rel="noopener noreferrer">↗ ${esc(tx({es:'Abrir información oficial',en:'Open official information',fr:'Ouvrir les informations officielles',de:'Offizielle Informationen öffnen'}))}</a>`:''}<button class="action ${selected?'success':'primary'}" onclick="saveJourneyChoiceByIndex(${Number(index)},${Number(optionIndex)})">${selected?'✓ '+esc(tx({es:'Seleccionado',en:'Selected',fr:'Sélectionné',de:'Ausgewählt'})):'🧳 '+esc(tx({es:'Este es mi viaje',en:'This is my journey',fr:'C’est mon voyage',de:'Das ist meine Reise'}))}</button></div></span></div>`
   }).join('');
   document.getElementById('detail-content').innerHTML=`<div style="font-size:42px">${esc(g.icon||'🧳')}</div><h2 id="detail-title">${esc(tx(g.title))}</h2><p>${esc(tx(g.summary))}</p><div class="actions"><button class="action ${String(g.id||'')===String(journey.transportId||'')?'success':'primary'}" onclick="saveJourneyChoiceByIndex(${Number(index)},-1)">${String(g.id||'')===String(journey.transportId||'')?'✓ '+esc(tx({es:'Viaje seleccionado',en:'Journey selected',fr:'Voyage sélectionné',de:'Reise ausgewählt'})):'🧳 '+esc(tx({es:'Seleccionar este origen',en:'Select this origin',fr:'Sélectionner cette origine',de:'Diesen Ausgangspunkt wählen'}))}</button></div><div class="transport-options">${options}</div>`;
   openDetailA11y()
@@ -1761,7 +1764,7 @@ function openDepartureGuide(index){
   const guides=window._departureGuides||[],g=guides[Number(index)];
   if(!g)return;
   const options=(g.options||[]).map(o=>{
-    const u=safeUrl(o.url);return `<div class="transport-option"><span style="font-size:25px" aria-hidden="true">${esc(o.icon||'🧭')}</span><span style="flex:1"><strong>${esc(tx(o.title))}</strong><p>${esc(tx(o.departureBody)||tx({es:'Consulta horarios, disponibilidad y margen recomendado antes de salir del apartamento.',en:'Check schedules, availability and recommended timing before leaving the apartment.',fr:'Consultez les horaires, la disponibilité et la marge recommandée avant le départ.',de:'Prüfe Fahrpläne, Verfügbarkeit und den empfohlenen Zeitpuffer vor der Abreise.'}))}</p>${u?`<div class="actions"><a class="action secondary" href="${attr(u)}" target="_blank" rel="noopener noreferrer">↗ ${esc(tx({es:'Abrir información oficial',en:'Open official information',fr:'Ouvrir les informations officielles',de:'Offizielle Informationen öffnen'}))}</a></div>`:''}</span></div>`
+    const u=guestLinkUrl_(o);return `<div class="transport-option"><span style="font-size:25px" aria-hidden="true">${esc(o.icon||'🧭')}</span><span style="flex:1"><strong>${esc(tx(o.title))}</strong><p>${esc(tx(o.departureBody)||tx({es:'Consulta horarios, disponibilidad y margen recomendado antes de salir del apartamento.',en:'Check schedules, availability and recommended timing before leaving the apartment.',fr:'Consultez les horaires, la disponibilité et la marge recommandée avant le départ.',de:'Prüfe Fahrpläne, Verfügbarkeit und den empfohlenen Zeitpuffer vor der Abreise.'}))}</p>${u?`<div class="actions"><a class="action secondary" href="${attr(u)}" target="_blank" rel="noopener noreferrer">↗ ${esc(tx({es:'Abrir información oficial',en:'Open official information',fr:'Ouvrir les informations officielles',de:'Offizielle Informationen öffnen'}))}</a></div>`:''}</span></div>`
   }).join('');
   document.getElementById('detail-content').innerHTML=`<div style="font-size:42px">${esc(g.icon||'🧭')}</div><h2 id="detail-title">${esc(departureGuideTitle(g.id))}</h2><p>${esc(tx({es:'Planifica el trayecto y comprueba siempre los horarios oficiales.',en:'Plan the route and always check official schedules.',fr:'Planifiez le trajet et vérifiez toujours les horaires officiels.',de:'Plane die Strecke und prüfe stets die offiziellen Fahrpläne.'}))}</p><div class="transport-options">${options}</div>`;
   openDetailA11y()
@@ -1817,7 +1820,7 @@ async function sendTravelDelay(){
 function showUsefulGuide(){
   const useful=snapshot.content.useful||{},journey=snapshot.journey||{},items=(useful.items||[]).filter(x=>!['beach_webcam','beach_safety','jellyfish'].includes(String(x&&x.id||''))).filter(x=>!x.audience||x.audience==='all'||x.audience===journey.transportId);
   const card=x=>{
-    const u=safeUrl(x.url),phone=String(x.phone||'').replace(/[^+\d]/g,''),wa=String(x.whatsappPhone||'').replace(/\D/g,'');
+    const u=guestLinkUrl_(x),phone=String(x.phone||'').replace(/[^+\d]/g,''),wa=String(x.whatsappPhone||'').replace(/\D/g,'');
     return `<div class="useful-card"><span class="ico" aria-hidden="true">${esc(x.icon||'ℹ️')}</span><span style="flex:1"><b>${esc(tx(x.title))}</b><p>${esc(tx(x.description))}</p></span><span class="useful-actions">${phone?`<a class="mini-action" href="tel:${attr(phone)}" aria-label="${attr(tx({es:'Llamar',en:'Call',fr:'Appeler',de:'Anrufen'}))}">📞</a>`:''}${wa?`<a class="mini-action" href="https://wa.me/${attr(wa)}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">💬</a>`:''}${u?`<a class="mini-action" href="${attr(u)}" target="_blank" rel="noopener noreferrer" aria-label="${attr(tx({es:'Abrir información',en:'Open information',fr:'Ouvrir les informations',de:'Information öffnen'}))}">↗</a>`:''}</span></div>`
   };
   document.getElementById('detail-content').innerHTML=`<div style="font-size:42px">ℹ️</div><h2 id="detail-title">${esc(tx(useful.title)||tx({es:'Benidorm útil',en:'Useful Benidorm'}))}</h2><p>${esc(tx(useful.intro))}</p><div class="useful-grid">${items.map(card).join('')}</div>`;
@@ -1826,7 +1829,7 @@ function showUsefulGuide(){
 function showSafetyGuide(){
   const safety=sanitizeGuestContent_(snapshot.content.safety)||{},equipment=safety.equipment||[],emergency=safety.emergency||[],health=safety.health||[];
   const item=(x,kind)=>{
-    const phone=String(x.phone||'').replace(/[^+\d]/g,''),u=safeUrl(x.url);
+    const phone=String(x.phone||'').replace(/[^+\d]/g,''),u=guestMapRefPresent_(x.mapRef)?guestDisplayMapUrl_(x,false):guestLinkUrl_(x);
     return `<div class="safety-card ${x.urgent?'urgent':''}"><span class="ico" aria-hidden="true">${esc(x.icon||'ℹ️')}</span><span><b>${esc(tx(x.title))}</b><span>${esc(tx(x.description||x.body))}</span></span><span class="card-actions">${phone?`<a class="mini-action" href="tel:${attr(phone)}" aria-label="${attr(tx({es:'Llamar',en:'Call',fr:'Appeler',de:'Anrufen'}))}">📞</a>`:''}${u?`<a class="mini-action" href="${attr(u)}" target="_blank" rel="noopener noreferrer" aria-label="${attr(tx({es:'Abrir mapa',en:'Open map',fr:'Ouvrir la carte',de:'Karte öffnen'}))}">📍</a>`:''}</span></div>`
   };
   document.getElementById('detail-content').innerHTML=`<div class="safety-hero"><h3>🆘 ${esc(tx(safety.title)||tx({es:'Seguridad y emergencias',en:'Safety and emergencies'}))}</h3><p>${esc(tx(safety.intro))}</p></div><h2 id="detail-title">${esc(tx({es:'Actúa con calma y rapidez',en:'Act calmly and quickly',fr:'Agissez calmement et rapidement',de:'Ruhig und schnell handeln'}))}</h2><h3>${esc(tx({es:'En el apartamento',en:'In the apartment',fr:'Dans l’appartement',de:'In der Wohnung'}))}</h3><div class="safety-list">${equipment.map(x=>item(x,'equipment')).join('')}</div><h3>${esc(tx({es:'Teléfonos de emergencia',en:'Emergency numbers',fr:'Numéros d’urgence',de:'Notrufnummern'}))}</h3><div class="safety-list">${emergency.map(x=>item(x,'emergency')).join('')}</div><h3>${esc(tx({es:'Asistencia sanitaria',en:'Medical assistance',fr:'Assistance médicale',de:'Medizinische Hilfe'}))}</h3><div class="safety-list">${health.map(x=>item(x,'health')).join('')}</div>`;
@@ -2037,11 +2040,11 @@ function v19Media(x,videoOnly){
  if(!x||x.locked||x.sensitive)return '';
  const photo=safeUrl(x.imageUrl),video=safeUrl(x.videoUrl),poster=safeUrl(x.posterUrl||x.imageUrl);
  const title=tx(x.title)||v19Text('Guía visual','Visual guide','Guide visuel','Visuelle Anleitung');
- return (!videoOnly&&photo?'<img class="v19-photo" loading="lazy" decoding="async" src="'+attr(photo)+'" alt="'+attr(title)+'">':'')+(video?'<video class="v19-video" controls playsinline crossorigin="anonymous" preload="none" '+(poster?'poster="'+attr(poster)+'"':'')+' aria-label="'+attr(title)+'"><source src="'+attr(video)+'" type="video/mp4">'+Object.entries(x.captions||{}).filter(([l,u])=>safeUrl(u)).map(([l,u])=>'<track kind="captions" srclang="'+attr(l)+'" label="'+attr(l.toUpperCase())+'" src="'+attr(safeUrl(u))+'" '+(l===lang?'default':'')+'>').join('')+'</video><p class="subtle">'+esc(v19Text('Si el vídeo no carga, sigue los pasos escritos o abre Ayuda.','If the video does not load, follow the written steps or open Help.','Si la vidéo ne charge pas, suivez les étapes écrites ou ouvrez Aide.','Wenn das Video nicht lädt, folge den Textschritten oder öffne Hilfe.'))+'</p>':'');
+ return (!videoOnly&&photo?'<img class="v19-photo" loading="lazy" decoding="async" src="'+attr(photo)+'" alt="'+attr(title)+'">':'')+(video?'<video class="v19-video" controls playsinline crossorigin="anonymous" preload="none" '+(poster?'poster="'+attr(poster)+'"':'')+' aria-label="'+attr(title)+'"><source src="'+attr(video)+'" type="video/mp4">'+Object.entries(Object.prototype.toString.call(x.captions)==='[object Object]'?x.captions:{}).filter(([l,u])=>['es','en','fr','de'].includes(l)&&typeof u==='string'&&safeUrl(u)).map(([l,u])=>'<track kind="captions" srclang="'+attr(l)+'" label="'+attr(l.toUpperCase())+'" src="'+attr(safeUrl(u))+'" '+(l===lang?'default':'')+'>').join('')+'</video><p class="subtle">'+esc(v19Text('Si el vídeo no carga, sigue los pasos escritos o abre Ayuda.','If the video does not load, follow the written steps or open Help.','Si la vidéo ne charge pas, suivez les étapes écrites ou ouvrez Aide.','Wenn das Video nicht lädt, folge den Textschritten oder öffne Hilfe.'))+'</p>':'');
 }
 function v19Point(x,title){
- if(!x||(!tx(x.body)&&!safeUrl(x.mapsUrl)))return '';
- const url=safeUrl(x.mapsUrl);
+ const url=guestDisplayMapUrl_(x,false);
+ if(!x||(!tx(x.body)&&!url))return '';
  return '<article class="card v19-point"><h3>'+esc(tx(x.title)||title)+'</h3><p>'+esc(tx(x.body))+'</p>'+v19Media(x)+(url?'<a class="action secondary" target="_blank" rel="noopener noreferrer" href="'+attr(url)+'">'+esc(v19Text('Abrir punto exacto','Open exact location','Ouvrir le point exact','Genauen Ort öffnen'))+'</a>':'')+'</article>';
 }
 function v19Meeting(){
@@ -2061,7 +2064,7 @@ function renderTravel(){
  '<div class="dir-toggle"><button class="'+(!out?'active':'')+'" onclick="setTravelDirection(\'in\')">'+esc(tr('travel_in'))+'</button><button class="'+(out?'active':'')+'" onclick="setTravelDirection(\'out\')">'+esc(tr('travel_out'))+'</button></div>'+
  '<div class="origin-grid">'+guides.map((x,i)=>'<button class="origin-btn '+(x.id===travelOrigin?'active':'')+'" onclick="setTravelOriginByIndex('+i+')">'+ico(travelIconFor(x.id))+' '+esc(tx(x.title))+'</button>').join('')+'</div>'+
  '<p class="subtle">'+esc(v19Text('Estas son alternativas: elige la que encaje con tu viaje. Consulta horarios y condiciones antes de salir.','These are alternatives: choose the one that suits your trip. Check schedules and conditions before leaving.','Ce sont des alternatives : choisissez celle qui vous convient. Consultez les horaires avant le départ.','Dies sind Alternativen. Wähle die passende und prüfe Fahrplan und Bedingungen.'))+'</p>'+
- opts.map((o,i)=>'<article class="route-card"><h3>'+esc(tx(o.title))+'</h3><p>'+esc(tx(o.body))+'</p>'+v19Media(o)+(safeUrl(o.url)?'<a class="action secondary" href="'+attr(safeUrl(o.url))+'" target="_blank" rel="noopener noreferrer">'+esc(v19Text('Consultar opción','Check option','Consulter cette option','Option ansehen'))+'</a>':'')+(!out?'<button class="action primary" onclick="saveJourneyChoiceByIndex('+index+','+i+')">'+esc(saved.transportId===g.id&&saved.optionId===o.id?v19Text('Opción elegida','Selected option','Option choisie','Gewählte Option'):v19Text('Elegir esta opción','Choose this option','Choisir cette option','Diese Option wählen'))+'</button>':'')+'</article>').join('')+
+ opts.map((o,i)=>'<article class="route-card"><h3>'+esc(tx(o.title))+'</h3><p>'+esc(tx(o.body))+'</p>'+v19Media(o)+(guestLinkUrl_(o)?'<a class="action secondary" href="'+attr(guestLinkUrl_(o))+'" target="_blank" rel="noopener noreferrer">'+esc(v19Text('Consultar opción','Check option','Consulter cette option','Option ansehen'))+'</a>':'')+(!out?'<button class="action primary" onclick="saveJourneyChoiceByIndex('+index+','+i+')">'+esc(saved.transportId===g.id&&saved.optionId===o.id?v19Text('Opción elegida','Selected option','Option choisie','Gewählte Option'):v19Text('Elegir esta opción','Choose this option','Choisir cette option','Diese Option wählen'))+'</button>':'')+'</article>').join('')+
  (out&&!opts.length?'<div class="card"><p>'+esc(v19Text('Consulta con nosotros el recorrido de regreso. No asumimos que las paradas sean las mismas que a la llegada.','Ask us about your return journey. Stops may differ from your arrival.','Contactez-nous pour le retour : les arrêts peuvent différer.','Frage uns nach der Rückfahrt. Die Haltestellen können abweichen.'))+'</p><button class="action secondary" onclick="showView(\'help\')">'+esc(tr('nav_help'))+'</button></div>':'')+
  (!out?v19Meeting()+v19Point(a.dropoff,v19Text('Descarga de equipaje','Luggage drop-off','Dépose des bagages','Gepäck ausladen'))+(a.parkings||[]).map(x=>v19Point(x,v19Text('Aparcamiento','Parking','Parking','Parkplatz'))).join('')+'<div class="section-head"><h2>'+esc(tr('last_meters'))+'</h2></div>'+(a.steps||[]).filter(x=>!x.needsContent).map(x=>v19Point(x,tx(x.title))).join(''):'');
 }
@@ -2086,6 +2089,122 @@ async function securityCloseStay(){
     if(!result.ok)throw Error('logout');
     forgetStay();snapshot=null;cleanTokenUrl();location.replace(location.pathname+'?r='+encodeURIComponent(reservationId));
   }catch(_e){alert(tx({es:'No se pudo cerrar la sesión en el servidor. Comprueba la conexión y vuelve a intentarlo.',en:'Could not close the server session. Check your connection and retry.',fr:'Impossible de fermer la session serveur. Vérifiez la connexion.',de:'Serversitzung konnte nicht geschlossen werden. Prüfe die Verbindung.'}));}
+}
+// Pure map reference contract, bundled identically into backend and portal.
+function guestMapText_(value){var s=String(value||'').trim();if(s.length>500||/[\u0000-\u001f\u007f]/.test(s)||/https?:|[?&](?:r|t|token|session)=/i.test(s))return '';return s;}
+function guestMapDestination_(ref){
+  ref=ref||{};var lat=ref.lat,lng=ref.lng;
+  if(lat!==null&&lat!==undefined&&lat!==''&&lng!==null&&lng!==undefined&&lng!==''&&isFinite(Number(lat))&&isFinite(Number(lng))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lng))<=180)return Number(lat)+','+Number(lng);
+  var label=guestMapText_(ref.label),address=guestMapText_(ref.address);
+  if(ref.placeId&&label)return label+(address?', '+address:'');
+  return label&&address&&address.split(',').length>=3?label+', '+address:'';
+}
+function guestMapUrl_(ref,directions,origin){
+  var destination=guestMapDestination_(ref);if(!destination)return '';
+  var key=directions?'destination':'query',parts=['api=1',key+'='+encodeURIComponent(destination)];
+  if(ref.placeId){if(!/^[A-Za-z0-9_-]{10,255}$/.test(ref.placeId))return '';parts.push(key+'_place_id='+encodeURIComponent(ref.placeId));}
+  if(directions&&origin){var start=guestMapDestination_(origin);if(!start)return '';parts.push('origin='+encodeURIComponent(start));if(origin.placeId){if(!/^[A-Za-z0-9_-]{10,255}$/.test(origin.placeId))return '';parts.push('origin_place_id='+encodeURIComponent(origin.placeId));}}
+  var url='https://www.google.com/maps/'+(directions?'dir':'search')+'/?'+parts.join('&');return url.length<=2048?url:'';
+}
+function guestMapClassification_(ref,legacy){
+  if(ref&&guestMapUrl_(ref,false))return ref.placeId?'EXACT_PLACE':(ref.lat!==null&&ref.lat!==undefined&&ref.lat!==''?'COORDINATE':'EXACT_PLACE');
+  var u=String(legacy||'');if(!u)return 'EMPTY';
+  if(u.length>2048||!/^https:\/\/www\.google\.com\/maps\/(search|dir)\/\?/.test(u)||/[\u0000-\u0020\u007f]/.test(u))return 'INVALID';
+  var p={};try{u.split('?')[1].split('&').forEach(function(x){var pair=x.split('=');p[decodeURIComponent(pair[0])]=decodeURIComponent((pair[1]||'').replace(/\+/g,' '));});}catch(e){return 'INVALID';}
+  if(p.api!=='1'||(p.origin&&!guestMapText_(p.origin))||(p.origin_place_id&&!/^[A-Za-z0-9_-]{10,255}$/.test(p.origin_place_id))||Object.keys(p).some(function(k){return ['api','query','query_place_id','destination','destination_place_id','origin','origin_place_id','travelmode'].indexOf(k)<0;}))return 'INVALID';
+  var d=p.query||p.destination;if(!d||!guestMapText_(d))return 'INVALID';
+  if(/cerca de|near me|nearby|placeholder|pendiente/i.test(d))return 'GENERIC_SEARCH';
+  if((p.query_place_id||p.destination_place_id)){if(!/^[A-Za-z0-9_-]{10,255}$/.test(p.query_place_id||p.destination_place_id))return 'INVALID';return 'EXACT_PLACE';}
+  if(/^-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/.test(d)){var nums=d.split(',');return Math.abs(+nums[0])<=90&&Math.abs(+nums[1])<=180?'COORDINATE':'INVALID';}
+  return d.split(',').length>=4?'EXACT_PLACE':'GENERIC_SEARCH';
+}
+// RC3.2.4 · one display rule for every renderer: mapRef first; legacy only if
+// EXACT_PLACE/COORDINATE; a present mapRef never falls back to a legacy URL.
+function guestMapRefPresent_(ref){return !!ref&&typeof ref==='object'&&!Array.isArray(ref)&&['label','address','placeId','lat','lng'].some(function(k){return ref[k]!==undefined&&ref[k]!==null&&String(ref[k]).trim()!=='';});}
+// RC3.2.5 · Google Maps host detection (www/maps/no-www, any google TLD, short links).
+function guestIsGoogleMapsUrl_(value){
+  return /^https?:\/\/(?:(?:www\.|maps\.)?google\.[a-z.]+\/maps(?:[\/?#]|$)|maps\.google\.[a-z.]+(?:[\/?#]|$)|maps\.app\.goo\.gl(?:[\/?#]|$)|goo\.gl\/maps(?:[\/?#]|$))/i.test(String(value||'').trim());
+}
+// Short links cannot be verified without an external redirect: never exact.
+function guestMapUrlKind_(value){
+  var u=String(value||'').trim();if(!u)return 'EMPTY';
+  if(/^https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl\/maps)(?:[\/?#]|$)/i.test(u))return 'UNVERIFIED_SHORTLINK';
+  return guestMapClassification_(null,u);
+}
+// Single fail-closed authority for EVERY outbound URL shown to a guest, whatever
+// the property (officialUrl, url, mapsUrl, directionsUrl, searchUrl...).
+function guestSafeOutboundUrl_(value){
+  var u=String(value||'').trim();
+  if(!/^https:\/\//i.test(u)||/[\u0000-\u001F\u007F]/.test(u))return '';
+  if(guestIsGoogleMapsUrl_(u)){var kind=guestMapUrlKind_(u);return kind==='EXACT_PLACE'||kind==='COORDINATE'?u:'';}
+  return u;
+}
+function guestDisplayMapUrl_(item,directions){
+  item=item||{};if(guestMapRefPresent_(item.mapRef))return guestMapUrl_(item.mapRef,!!directions);
+  var fields=directions?['directionsUrl','mapsUrl','mapsQuery','url','officialUrl','searchUrl']:['mapsUrl','mapsQuery','url','officialUrl','searchUrl','directionsUrl'];
+  var field=fields.filter(function(k){return typeof item[k]==='string'&&guestIsGoogleMapsUrl_(item[k]);})[0];
+  return field?guestSafeOutboundUrl_(item[field]):'';
+}
+// RC3.2.3 · Contextual view, layered on the existing authenticated stay renderer.
+function rc323NowActions(){
+ const s=snapshot.status||{},phase=snapshot.phase||'',j=snapshot.journey||{},coord=snapshot.coordination||{};
+ const action=(label,code)=>({label:tx(label),code});
+ const A=(es,en,fr,de,code)=>action({es,en,fr,de},code);
+ let actions=[];
+ if(phase==='prearrival'){
+   if(!s.checkinComplete)actions.push(A('Completar registro','Complete check-in','Compléter l’enregistrement','Check-in ausfüllen','checkin'));
+   if(!j.transportId)actions.push(A('Elegir cómo llegar','Plan your arrival','Préparer votre arrivée','Anreise planen','travel'));
+   if(!coord.confirmed)actions.push(A('Proponer mi hora','Propose arrival time','Proposer mon heure','Ankunftszeit vorschlagen','time'));
+ }else if(phase==='arrival'){
+   actions=[A('Ver mi ruta','View my route','Voir mon itinéraire','Meine Route ansehen','travel'),A('Ver el encuentro','View meeting point','Voir le rendez-vous','Treffpunkt ansehen','arrival'),A('Avisar retraso','Report a delay','Signaler un retard','Verspätung melden','delay')];
+ }else if(phase==='checkout'||phase==='completed'){
+   actions=[A('Lista de salida','Departure checklist','Liste de départ','Abreise-Checkliste','checkout'),A('Cómo devolver las llaves','Return the keys','Rendre les clés','Schlüssel zurückgeben','checkout'),A('Organizar el regreso','Plan return trip','Planifier le retour','Rückreise planen','return')];
+ }else{
+   actions=[A('Wi-Fi y apartamento','Wi-Fi and apartment','Wi-Fi et appartement','WLAN und Wohnung','apartment'),A('Descubrir Benidorm','Discover Benidorm','Découvrir Benidorm','Benidorm entdecken','discover'),A('Moverse por la ciudad','Getting around','Se déplacer','Unterwegs in der Stadt','move')];
+ }
+ return actions.slice(0,3);
+}
+function rc323Go(code){
+ if(code==='checkin'){const u=safeUrl(snapshot.checkinUrl);if(u){window.open(u,'_blank','noopener,noreferrer');return;}showView('help');return;}
+ if(code==='time'){showArrivalTimeDialog();return;}
+ if(code==='delay'){showDelayDialog();return;}
+ if(code==='return'){showView('travel');setTravelDirection('out');return;}
+ if(code==='discover'){showView('home');document.getElementById('rc323-discover')?.scrollIntoView({behavior:'smooth'});return;}
+ showView(code);
+}
+function rc323OfficialCard(url,label){const u=safeUrl(url);return u?'<a class="action secondary" href="'+attr(u)+'" target="_blank" rel="noopener noreferrer">↗ '+esc(tx(label))+'</a>':'';}
+function rc323EnhanceExperience(){
+ if(!snapshot)return;
+ const home=document.getElementById('view-home'),c=snapshot.content||{},s=snapshot.status||{},r=snapshot.reservation||{},coord=snapshot.coordination||{};
+ const actions=rc323NowActions();
+ const coordLine=coord.confirmed?tx({es:'Hora confirmada',en:'Confirmed time',fr:'Heure confirmée',de:'Bestätigte Zeit'})+': '+coord.confirmed:
+    tx({es:'Hora propuesta',en:'Proposed time',fr:'Heure proposée',de:'Vorgeschlagene Zeit'})+': '+(coord.proposed||r.arrivalTime||'—');
+ const now='<section class="rc323-now card" aria-label="'+attr(tx({es:'Lo importante ahora',en:'What matters now',fr:'À faire maintenant',de:'Jetzt wichtig'}))+'"><div class="card-title"><h2>✦ '+esc(tx({es:'Lo importante ahora',en:'What matters now',fr:'À faire maintenant',de:'Jetzt wichtig'}))+'</h2></div><div class="rc323-now-actions">'+actions.map(x=>'<button class="action secondary" onclick="rc323Go(\''+x.code+'\')">'+esc(x.label)+'</button>').join('')+'</div><p class="subtle">'+esc(apartmentDisplayName())+' · '+esc(formatDate(r.entry,{day:'numeric',month:'long'}))+' → '+esc(formatDate(r.checkout,{day:'numeric',month:'long'}))+' · '+esc(String(r.nights||0))+' '+esc(tx({es:'noches',en:'nights',fr:'nuits',de:'Nächte'}))+'<br>'+esc(s.prepared?tr('prepared'):tr('preparing'))+' · '+esc(s.checkinComplete?tr('checkin_done'):tr('checkin_pending'))+'<br>'+esc(coord.receiver||c.arrival?.handover?.hostName||'')+' · '+esc(coordLine)+'</p></section>';
+ home.insertAdjacentHTML('afterbegin',now);
+ // RC3.2.4 · this renderer is not an editorial authority: official sources,
+ // agendas and transport facts come only from reviewed GuestContent.
+ const link=x=>safeUrl(x.officialUrl)||guestLinkUrl_(x)||guestDisplayMapUrl_(x,false);
+ const d=c.discovery||{},cards=(d.cards||[]).filter(x=>x&&tx(x.title)),events=(d.events||[]).filter(x=>x&&x.endAt&&Date.parse(x.endAt)>=Date.now()).slice(0,3);
+ const cardsHtml=cards.map(x=>{const u=link(x);return '<article class="card"><h3>'+esc(tx(x.title))+'</h3><p>'+esc(tx(x.summary||x.body))+'</p>'+(u?rc323OfficialCard(u,{es:'Abrir fuente oficial',en:'Open official source',fr:'Ouvrir la source officielle',de:'Offizielle Quelle öffnen'}):'')+'</article>';}).join('');
+ const eventsHtml=events.map(x=>'<article class="card"><h3>'+esc(tx(x.title))+'</h3><p>'+esc(tx(x.summary||x.body))+'</p>'+rc323OfficialCard(x.officialUrl,{es:'Ver evento oficial',en:'View official event',fr:'Voir l’événement officiel',de:'Offizielle Veranstaltung'})+'</article>').join('');
+ if(cardsHtml||eventsHtml)home.insertAdjacentHTML('beforeend','<section id="rc323-discover" class="rc323-discovery"><div class="section-head"><h2>'+esc(tx({es:'Descubre Benidorm',en:'Discover Benidorm',fr:'Découvrez Benidorm',de:'Benidorm entdecken'}))+'</h2></div><div class="rc323-discovery-grid">'+cardsHtml+eventsHtml+'</div></section>');
+ const m=c.mobility||{},transport=(m.transport||[]).filter(x=>x&&tx(x.title)).slice(0,6);
+ const transportCard=x=>{const u=link(x);return '<article class="card"><h3>'+esc(tx(x.title))+'</h3><p>'+esc(tx(x.summary||x.body))+'</p>'+(u?rc323OfficialCard(u,{es:'Abrir fuente oficial',en:'Open official source',fr:'Ouvrir la source officielle',de:'Offizielle Quelle öffnen'}):'')+'</article>';};
+ const travel=document.getElementById('view-travel');
+ if(transport.length)travel.insertAdjacentHTML('beforeend','<section class="card"><h2>'+esc(tx({es:'Consulta transportes actualizados',en:'Check current transport',fr:'Consultez les transports actuels',de:'Aktuelle Verbindungen prüfen'}))+'</h2><p class="subtle">'+esc(tx({es:'Horarios y avisos cambian: confírmalos en la fuente oficial antes de viajar.',en:'Schedules and alerts change: confirm them with the official source before travelling.',fr:'Horaires et avis changent : vérifiez-les auprès de la source officielle avant de partir.',de:'Fahrpläne und Hinweise ändern sich: prüfe sie vor der Reise bei der offiziellen Quelle.'}))+'</p><div class="rc323-discovery-grid">'+transport.map(transportCard).join('')+'</div></section>');
+ const move=document.getElementById('view-move'),walk=(m.walking||m.walk||[]).filter(x=>x&&tx(x.title)).slice(0,6);
+ const mapCard=x=>{const u=guestDisplayMapUrl_(x,true);return '<article class="card"><h3>'+esc(tx(x.title))+'</h3><p>'+esc(tx(x.summary||x.body||x.detail))+'</p>'+(u?rc323OfficialCard(u,{es:'Cómo llegar',en:'Directions',fr:'Itinéraire',de:'Route'}):'')+'</article>';};
+ if(walk.length)move.insertAdjacentHTML('beforeend','<section class="rc323-mobility"><div class="section-head"><h2>'+esc(tx({es:'Destinos a pie',en:'Walkable places',fr:'À pied',de:'Ziele zu Fuß'}))+'</h2></div><div class="rc323-discovery-grid">'+walk.map(mapCard).join('')+'</div></section>');
+ if(transport.length)move.insertAdjacentHTML('beforeend','<section class="rc323-mobility"><div class="section-head"><h2>'+esc(tx({es:'Transporte urbano',en:'Local transport',fr:'Transports urbains',de:'Nahverkehr'}))+'</h2></div><div class="rc323-discovery-grid">'+transport.map(transportCard).join('')+'</div></section>');
+ const manual=document.getElementById('view-apartment'),items=(c.manual||[]).filter(x=>x&&!x.notApplicable&&tx(x.title)),sure=items.filter(x=>['air','tv','wifi'].includes(x.id)),before=items.filter(x=>['waste','checkout','departure'].includes(x.id)),optional=items.filter(x=>!sure.includes(x)&&!before.includes(x));
+ const summary=(title,items)=>'<p class="subtle"><strong>'+esc(title)+':</strong> '+esc(items.map(x=>tx(x.title)).join(' · ')||'—')+'</p>';
+ manual.insertAdjacentHTML('afterbegin','<div class="card">'+summary(tx({es:'Lo usarás seguro',en:'Everyday essentials',fr:'Indispensables',de:'Das brauchst du sicher'}),sure)+summary(tx({es:'Si lo necesitas',en:'When you need it',fr:'Si besoin',de:'Bei Bedarf'}),optional)+summary(tx({es:'Antes de salir',en:'Before you leave',fr:'Avant de partir',de:'Vor der Abreise'}),before)+'</div>');
+ const help=document.getElementById('view-help');
+ help.insertAdjacentHTML('afterbegin','<div class="card"><h2>'+esc(tx({es:'Necesito ayuda con…',en:'I need help with…',fr:'J’ai besoin d’aide pour…',de:'Ich brauche Hilfe bei…'}))+'</h2><div class="actions"><button class="action secondary" onclick="showView(\'arrival\')">'+esc(tx({es:'No encuentro el portal',en:'I cannot find the entrance',fr:'Je ne trouve pas l’entrée',de:'Ich finde den Eingang nicht'}))+'</button><button class="action danger" onclick="rc323UrgentEntry()">'+esc(tx({es:'No puedo entrar',en:'I cannot get in',fr:'Je ne peux pas entrer',de:'Ich komme nicht hinein'}))+'</button><button class="action secondary" onclick="showView(\'apartment\')">'+esc(tx({es:'Aire, agua caliente o Wi-Fi',en:'AC, hot water or Wi-Fi',fr:'Climatisation, eau chaude ou Wi-Fi',de:'Klima, Warmwasser oder WLAN'}))+'</button></div></div>');
+}
+function rc323UrgentEntry(){
+ const types=(snapshot.content.help?.types||[]),entry=types.find(x=>/^(entry|access|cannot_enter|door)$/i.test(x.id||''));
+ if(entry)openIncident(entry.id,tx(entry.title),'urgent');else showView('help');
 }
 </script>
 </body>
